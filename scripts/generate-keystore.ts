@@ -32,13 +32,8 @@ async function generateKeystore() {
     const wallet = new ethers.Wallet(privateKey);
 
     // Generate keystore
-    const keystore = await wallet.encrypt(password, {
-      scrypt: {
-        N: 131072,
-        r: 8,
-        p: 1
-      }
-    });
+    console.log("Encrypting keystore...");
+    const keystore = await wallet.encrypt(password);
 
     // Save keystore to file
     const keystorePath = join(keystoreDir, `deployer-${wallet.address}.json`);

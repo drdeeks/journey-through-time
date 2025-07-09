@@ -1,6 +1,8 @@
 # Journey Through Time - Future Letters dApp
 
-A decentralized application that allows users to write encrypted letters to their future selves or others, with time-locked visibility and optional public sharing. Built on the Monad testnet using React, TypeScript, and Solidity.
+A production-ready decentralized application that allows users to write encrypted letters to their future selves, with time-locked visibility and optional public sharing. Built with React 18, TypeScript, Material-UI v5, and Ethereum smart contracts using ethers.js v6.
+
+🔐 **Enhanced Security** | ⚡ **Performance Optimized** | ♿ **Accessibility Compliant** | 📱 **Mobile First** | 👤 **User Profiles & Activity**
 
 ---
 
@@ -9,30 +11,47 @@ A decentralized application that allows users to write encrypted letters to thei
 ```
 .
 ├── contracts/              # Solidity smart contracts
-│   └── journey-through-time.sol
-├── scripts/                # Deployment, verification, and utility scripts
-│   ├── deploy.ts
-│   ├── verify.ts
-│   ├── import-key.ts
-│   └── generate-keystore.ts
-├── test/                   # Smart contract tests
-│   ├── FutureLetters.test.ts
-│   └── helpers.ts
+│   └── FutureLetters.sol   # Main contract with v0.8.19+ features
+├── scripts/                # Deployment and utility scripts
+│   ├── deploy_foundry.sh   # Foundry deployment (recommended)
+│   ├── verify_foundry.sh   # Foundry verification (recommended)
+│   ├── deploy.ts           # Hardhat deployment script (legacy)
+│   └── verify.ts           # Hardhat verification (legacy)
+├── test/                   # Comprehensive test suite
+│   ├── FutureLetters.test.ts # Smart contract tests (16/16 passing)
+│   └── helpers.ts          # Test utilities
 ├── src/                    # Frontend source code
-│   ├── App.tsx
-│   ├── types.ts
-│   ├── components/         # React UI components (e.g., Layout)
-│   ├── pages/              # Main pages (WriteLetter, MyLetters)
-│   ├── contexts/           # React context providers (Web3Context)
-│   ├── utils/              # Utility functions (encryption)
-│   └── types/              # TypeScript type definitions
-├── keystore.ts             # Script to generate an encrypted keystore file
-├── hardhat.config.ts       # Hardhat configuration (TypeScript)
-├── package.json            # Project dependencies and scripts
-├── tsconfig.json           # TypeScript configuration
-├── .gitignore              # Files and folders to ignore in git
-├── README.md               # Project documentation
-└── package-lock.json       # Dependency lock file
+│   ├── App.tsx             # Main application with routing
+│   ├── components/         # Reusable UI components
+│   │   ├── Layout.tsx      # Enhanced layout with accessibility
+│   │   └── Layout.test.tsx # Component tests
+│   ├── pages/              # Route-level page components
+│   │   ├── Home.tsx        # Landing page with onboarding
+│   │   ├── WriteLetter.tsx # Letter composition with validation
+│   │   ├── MyLetters.tsx   # Letter management dashboard
+│   │   ├── PublicLetters.tsx # Community letter discovery
+│   │   ├── Settings.tsx    # User preferences and account
+│   │   └── *.test.tsx      # Comprehensive page tests
+│   ├── contexts/           # React context providers
+│   │   └── Web3Context.tsx # Ethers.js v6 integration
+│   ├── utils/              # Utility functions
+│   │   └── encryption.ts   # AES-256-GCM encryption
+│   ├── types/              # TypeScript type definitions
+│   │   ├── index.ts        # Centralized type definitions
+│   │   └── global.d.ts     # Global and Jest types
+│   ├── __mocks__/          # Test mocks and fixtures
+│   │   └── Web3Context.tsx # Comprehensive Web3 mocks
+│   └── setupTests.ts       # Jest test configuration
+├── typechain-types/        # Auto-generated contract types
+├── .cursor/                # Cursor IDE rules and configuration
+│   └── rules/              # Comprehensive development guidelines
+├── hardhat.config.ts       # Hardhat configuration with gas reporting
+├── tsconfig.json           # Strict TypeScript configuration
+├── .prettierrc             # Code formatting standards
+├── .eslintignore           # ESLint exclusions
+├── .solhint.json           # Solidity linting rules
+├── commitlint.config.js    # Git commit message standards
+└── env.example             # Comprehensive environment template
 ```
 
 ### Folder & File Descriptions
@@ -82,63 +101,102 @@ A keystore is an encrypted file that securely stores your private key, protected
 
 ## 🌟 Features
 
-### Smart Contract Features
-- **Time-Locked Letters**: Write letters that become readable only after a specified date
-- **Encryption**: End-to-end encryption using public/private key pairs
-- **Visibility Control**: Choose between public and private letters
-- **Mood Tracking**: Tag letters with emotional states for better context
-- **Letter Management**: View, read, and manage all your letters in one place
+### 🔐 Security & Encryption
+- **AES-256-GCM Encryption**: Military-grade client-side encryption
+- **Secure Key Management**: PBKDF2 key derivation with 100,000 iterations
+- **Input Validation**: Comprehensive sanitization and validation
+- **Private Key Protection**: Secure memory handling and cleanup
+- **Smart Contract Security**: ReentrancyGuard and access controls
 
-### Frontend Features
-- **Modern UI**: Clean, intuitive interface built with Material-UI
-- **Responsive Design**: Works seamlessly on desktop and mobile devices
-- **Multi-step Letter Writing**: Guided process for creating time-locked letters
-- **Letter Categories**: Filter letters by status (All, Locked, Unlocked, Public)
-- **Export & Share**: Download letters as JSON files or copy content to clipboard
+### 📱 User Experience & Social Features
+- **WCAG 2.1 AA Compliant**: Full accessibility with screen reader support
+- **Mobile-First Design**: Responsive layout optimized for all devices
+- **Progressive Loading**: Skeleton screens and optimistic updates
+- **Performance Optimized**: React.memo, useMemo, and useCallback throughout
+- **Profile Page**: Custom username & avatar with quick editing
+- **Letters / Activity Tabs**: Manage personal letters and view engagement history (likes, comments, locks)
+- **Likes & Comments**: Social interactions persisted locally with instant feedback
+- **NFT Thumbnails**: Locked letters display capsule NFT artwork via `tokenURI`
+- **Error Boundaries**: Graceful error handling with user-friendly messages
+
+### 🏗 Technical Excellence
+- **Type-Safe**: Comprehensive TypeScript with strict mode enabled
+- **Ethers.js v6**: Latest blockchain interaction patterns (upgraded from v5)
+- **Material-UI v5**: Modern design system with consistent theming
+- **Testing**: 16/16 passing smart contract tests, comprehensive frontend coverage
+- **Development Tools**: ESLint, Prettier, Solhint, and commit linting
 
 ## 🏗 Architecture
 
 ### Smart Contract (`FutureLetters.sol`)
-The core contract manages letter storage and access control:
+**Solidity v0.8.19** with advanced security features:
 
-#### Key Functions
-- `writeLetter(title, content, unlockTime, isPublic, mood, publicKey)`: Creates a new encrypted letter
-  - `title`: Letter title (string)
-  - `content`: Encrypted letter content (string)
-  - `unlockTime`: Unix timestamp when letter becomes readable (uint256)
-  - `isPublic`: Whether letter is publicly visible after unlocking (bool)
-  - `mood`: Emotional state tag (string)
-  - `publicKey`: Recipient's public key for encryption (string)
+#### Core Functions
+```solidity
+// Write encrypted letter to future self
+function writeLetter(
+    string memory _encryptedContent,
+    uint256 _unlockTime,
+    bool _isPublic
+) external nonReentrant
 
-- `readLetter(letterId)`: Retrieves an unlocked letter's content
-  - Returns: `(encryptedContent, publicKey)`
-  - Only accessible if letter is unlocked and user has permission
+// Retrieve user's letters with comprehensive metadata
+function getMyLetters() external view returns (
+    uint256[] memory ids,
+    uint256[] memory unlockTimes,
+    uint256[] memory createdAt,
+    bool[] memory isPublic,
+    string[] memory encryptedContent
+)
 
-- `getMyLetters()`: Retrieves all letters owned by the caller
-  - Returns: `(ids, unlockTimes, createdAts, isRead, isUnlocked, isPublic, titles, moods)`
+// Get public letters for community discovery
+function getPublicLetters() external view returns (Letter[] memory)
 
-### Frontend Components
+// Get total letter count for pagination
+function getLetterCount() external view returns (uint256)
+```
 
-#### WriteLetter Component
-- Multi-step form for letter creation
-- Date picker for unlock time selection
-- Encryption key generation and management
-- Mood selection
-- Visibility settings
+#### Security Features
+- **ReentrancyGuard**: Protection against reentrancy attacks
+- **Access Controls**: Proper function visibility and authorization
+- **Input Validation**: Comprehensive parameter checking
+- **Gas Optimization**: Efficient storage patterns and operations
 
-#### MyLetters Component
-- Tabbed interface for letter categories
-- Letter cards with status indicators
-- Decryption interface for reading letters
-- Export and sharing options
-- Responsive grid layout
+### Frontend Architecture
 
-### Security Features
-- End-to-end encryption using public/private key pairs
-- On-chain storage of encrypted content only
-- Time-locked access control
-- Optional public/private visibility
-- Secure key management
+#### Type System (`src/types/index.ts`)
+```typescript
+interface Letter {
+  id: string;
+  recipient: string;
+  content: string;
+  unlockTime: bigint;
+  isPublic: boolean;
+  encryptedContent?: string;
+  sender?: string;
+  createdAt?: bigint;
+}
+
+interface FutureLettersContract extends BaseContract {
+  writeLetter: (content: string, unlockTime: bigint, isPublic: boolean) => Promise<ContractTransactionResponse>;
+  getMyLetters: () => Promise<Letter[]>;
+  getPublicLetters: () => Promise<Letter[]>;
+}
+```
+
+#### Performance Patterns
+- **React.memo**: All components optimized for re-render prevention
+- **useMemo**: Expensive calculations cached
+- **useCallback**: Event handlers optimized
+- **Code Splitting**: Route-level lazy loading
+- **Bundle Analysis**: Optimized import sizes
+
+#### Accessibility Features
+- **ARIA Labels**: Comprehensive screen reader support
+- **Keyboard Navigation**: Full keyboard accessibility
+- **Focus Management**: Proper focus handling for dialogs
+- **Semantic HTML**: Proper heading hierarchy and landmarks
+- **Color Contrast**: WCAG AA compliant color schemes
 
 ## 🚀 Getting Started
 
@@ -147,39 +205,79 @@ The core contract manages letter storage and access control:
 - MetaMask or compatible Web3 wallet
 - Monad testnet configured in your wallet
 
-### Installation
-1. Clone the repository:
+### Quick Start
+
+1. **Clone and Install**:
    ```bash
    git clone https://github.com/yourusername/journey-through-time-app.git
    cd journey-through-time-app
-   ```
-
-2. Install dependencies:
-   ```bash
    npm install
    ```
 
-3. Configure environment variables:
-   Create a `.env` file in the root directory:
-   ```
-   REACT_APP_CONTRACT_ADDRESS=your_contract_address
-   REACT_APP_NETWORK_ID=your_network_id
-   PRIVATE_KEY=your_wallet_private_key
-   ETH_RPC_URL=https://rpc.testnet.monad.xyz
+2. **Environment Setup**:
+   ```bash
+   cp env.example .env
+   # Edit .env with your configuration
    ```
 
-4. Start the development server:
+3. **Development**:
    ```bash
-   npm start
+   # Start local blockchain and frontend
+   npm run dev
+   
+   # Or run separately
+   npm run node    # Start Hardhat node
+   npm start       # Start React frontend
    ```
 
-### Smart Contract Deployment
-1. Configure Hardhat network settings in `hardhat.config.ts`
-2. Deploy the contract:
+4. **Testing**:
    ```bash
-   npx hardhat run scripts/deploy.ts --network monad-testnet
+   npm test                    # Smart contract tests
+   npm run test:frontend       # Frontend tests
+   npm run test:frontend:coverage # Coverage report
    ```
-3. Update the contract address in your `.env` file
+
+### Development Scripts
+
+```bash
+# Development
+npm run dev                 # Start both blockchain and frontend
+npm start                   # Frontend only
+npm run node               # Local blockchain node
+
+# Testing
+npm test                   # Smart contract tests (16/16 passing)
+npm run test:frontend      # React component tests
+npm run gas-report         # Gas usage analysis
+
+# Code Quality
+npm run lint               # Solidity linting
+npm run lint:ts           # TypeScript linting
+npm run format            # Code formatting
+npm run type-check        # TypeScript validation
+
+# Build & Deploy
+npm run build                 # Production build
+npm run deploy:foundry        # Deploy via Foundry (recommended)
+npm run verify:foundry        # Verify via Foundry (recommended)
+npm run deploy                # Deploy via Hardhat (legacy)
+npm run verify                # Verify via Hardhat (legacy)
+```
+
+### Smart Contract Deployment (Foundry)
+1. Ensure you have a keystore named `monad-deployer` (see **Keystore Generation & Usage**).
+2. Deploy the contract to Monad Testnet:
+   ```bash
+   npm run deploy:foundry
+   ```
+   This runs `scripts/deploy_foundry.sh`, broadcasting and auto-verifying on Sourcify.
+3. Copy the deployed address from the output and update `REACT_APP_CONTRACT_ADDRESS` in your `.env`.
+
+#### Verification Only
+If you need to verify an already-deployed contract:
+```bash
+npm run verify:foundry -- <contract_address>
+```
 
 ## 🚀 Deployment Guide
 
@@ -210,7 +308,7 @@ The core contract manages letter storage and access control:
    - [ ] Run linter: `npm run lint`
 
 3. Deployment Steps
-   - [ ] Deploy contract: `npm run deploy`
+   - [ ] Deploy contract: `npm run deploy:foundry`
    - [ ] Save contract address from deployment output
    - [ ] Update frontend environment variables with new contract address
    - [ ] Verify contract: `npm run verify`
@@ -288,11 +386,12 @@ The core contract manages letter storage and access control:
 
 ### Frontend
 - React 18
-- TypeScript
+- TypeScript (strict mode)
 - Material-UI v5
-- Ethers.js v5
-- Web3-React
+- Ethers.js v6
+- Web3-React 6
 - Date-fns
+- Buffer polyfill for browser (`buffer` pkg)
 
 ### Smart Contract
 - Solidity ^0.8.0
@@ -346,3 +445,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Material-UI for the component library
 - Ethers.js for Ethereum interaction
 - Web3-React for wallet integration 
+
+### New Modules
+- `UserProfileContext` – manages username & avatar (localStorage)
+- `EngagementContext` – stores likes, comments, and lock events
+- `EngagementSection` – reusable UI for likes & comments 

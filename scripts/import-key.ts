@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { writeFileSync, mkdirSync, existsSync } from "fs";
+import { writeFileSync, mkdirSync, existsSync, readdirSync } from "fs";
 import { join } from "path";
 import * as readline from "readline";
 
@@ -12,7 +12,7 @@ async function promptForInput(question: string, isSecret: boolean = false): Prom
   return new Promise((resolve) => {
     if (isSecret) {
       // Hide input for sensitive data
-      const stdin = process.openStdin();
+      const stdin = process.stdin;
       process.stdin.on("data", (char) => {
         const str = char + "";
         switch (str) {
@@ -68,13 +68,8 @@ async function importPrivateKey() {
 
     // Create wallet and encrypt
     const wallet = new ethers.Wallet(privateKey);
-    const keystore = await wallet.encrypt(password, {
-      scrypt: {
-        N: 131072, // CPU/memory cost parameter
-        r: 8,      // Block size parameter
-        p: 1       // Parallelization parameter
-      }
-    });
+    console.log("Encrypting keystore...");
+    const keystore = await wallet.encrypt(password);
 
     // Generate filename with timestamp
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -82,7 +77,7 @@ async function importPrivateKey() {
 
     // Check if keystore already exists for this address
     const existingKeystores = existsSync(keystoreDir) 
-      ? readFileSync(keystoreDir, "utf8").split("\n").filter(f => f.includes(wallet.address))
+      ? readdirSync(keystoreDir).filter((f: string) => f.includes(wallet.address))
       : [];
 
     if (existingKeystores.length > 0) {

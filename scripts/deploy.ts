@@ -1,5 +1,5 @@
 import { ethers, JsonRpcProvider } from "ethers";
-import hre from "hardhat";
+import hre, { run, network } from "hardhat";
 import { writeFileSync, readFileSync, existsSync } from "fs";
 import { join } from "path";
 import * as readline from "readline";
@@ -38,10 +38,10 @@ async function findKeystoreFile(): Promise<string> {
         resolve(parseInt(answer.trim()) - 1);
       });
     });
-    return join(keystoreDir, files[index]);
+    return join(keystoreDir, files[index] || files[0] || '');
   }
 
-  return join(keystoreDir, files[0]);
+  return join(keystoreDir, files[0] || '');
 }
 
 async function main() {
@@ -60,17 +60,26 @@ async function main() {
     console.log("Wallet address:", wallet.address);
 
     // Connect to network
-    const provider = new JsonRpcProvider(process.env.ETH_RPC_URL);
+    const provider = new JsonRpcProvider(process.env['ETH_RPC_URL']);
     const connectedWallet = wallet.connect(provider);
 
     // Get the contract factory
-    const FutureLetters = await hre.ethers.getContractFactory("FutureLetters", connectedWallet);
+    // The HardhatRuntimeEnvironment's ethers helpers are provided by hardhat-ethers, cast to any for type safety under strict settings
+    const FutureLetters = await (hre as any).ethers.getContractFactory("FutureLetters", connectedWallet);
     console.log("Deploying FutureLetters contract...");
 
     // Deploy the contract
     const futureLetters = await FutureLetters.deploy();
     console.log("Waiting for deployment transaction receipt...");
-    const receipt = await futureLetters.deployTransaction.wait();
+    const deploymentTx = futureLetters.deploymentTransaction();
+    if (!deploymentTx) {
+      throw new Error("Deployment transaction failed");
+    }
+    
+    const receipt = await deploymentTx.wait();
+    if (!receipt) {
+      throw new Error("Failed to get deployment receipt");
+    }
     const deployedAddress = await futureLetters.getAddress();
     console.log("FutureLetters deployed to:", deployedAddress);
     const deploymentInfo = {
@@ -95,12 +104,15 @@ async function main() {
     // Verify the contract on Etherscan (if not on a local network)
     if (network.name !== "hardhat" && network.name !== "localhost") {
       console.log("Waiting for block confirmations...");
-      await futureLetters.deployTransaction.wait(6); // Wait for 6 block confirmations
+      const verificationTx = futureLetters.deploymentTransaction();
+      if (verificationTx) {
+        await verificationTx.wait(6); // Wait for 6 block confirmations
+      }
 
       console.log("Verifying contract on Etherscan...");
       try {
         await run("verify:verify", {
-          address: futureLetters.address,
+          address: await futureLetters.getAddress(),
           constructorArguments: [],
         });
         console.log("Contract verified successfully");

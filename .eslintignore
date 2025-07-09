@@ -1,0 +1,15 @@
+node_modules/
+build/
+dist/
+coverage/
+artifacts/
+cache/
+typechain-types/
+.hardhat/
+.next/
+public/
+*.config.js
+*.config.ts
+scripts/deploy_foundry.sh
+scripts/verify_foundry.sh
+.cursor/ 

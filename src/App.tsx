@@ -1,9 +1,8 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { Web3ReactProvider } from '@web3-react/core';
-import { ethers } from 'ethers';
+import { BrowserProvider } from 'ethers';
 
 // Components
 import Layout from './components/Layout';
@@ -12,7 +11,10 @@ import WriteLetter from './pages/WriteLetter';
 import MyLetters from './pages/MyLetters';
 import PublicLetters from './pages/PublicLetters';
 import Settings from './pages/Settings';
+import Profile from './pages/Profile';
 import { Web3Provider } from './contexts/Web3Context';
+import { UserProfileProvider } from './contexts/UserProfileContext';
+import { EngagementProvider } from './contexts/EngagementContext';
 
 // Create theme
 const theme = createTheme({
@@ -60,30 +62,35 @@ const theme = createTheme({
 });
 
 function getLibrary(provider: any) {
-  return new ethers.providers.Web3Provider(provider);
+  return new BrowserProvider(provider);
 }
 
 function App() {
   return (
     <Web3ReactProvider getLibrary={getLibrary}>
       <Web3Provider>
-        <ThemeProvider theme={theme}>
-          <CssBaseline />
-          <Router>
-            <Layout>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/write" element={<WriteLetter />} />
-                <Route path="/my-letters" element={<MyLetters />} />
-                <Route path="/public-letters" element={<PublicLetters />} />
-                <Route path="/settings" element={<Settings />} />
-              </Routes>
-            </Layout>
-          </Router>
-        </ThemeProvider>
+        <UserProfileProvider>
+          <EngagementProvider>
+            <ThemeProvider theme={theme}>
+              <CssBaseline />
+              <Router>
+                <Layout>
+                  <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/write" element={<WriteLetter />} />
+                    <Route path="/my-letters" element={<MyLetters />} />
+                    <Route path="/public-letters" element={<PublicLetters />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/profile" element={<Profile />} />
+                  </Routes>
+                </Layout>
+              </Router>
+            </ThemeProvider>
+          </EngagementProvider>
+        </UserProfileProvider>
       </Web3Provider>
     </Web3ReactProvider>
   );
 }
 
-export default App; 
+export default App;

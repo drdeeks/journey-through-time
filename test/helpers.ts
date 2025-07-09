@@ -1,133 +1,129 @@
-import { ethers } from "ethers";
 import hre from "hardhat";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { FutureLetters } from "../typechain-types";
+import { ethers } from "hardhat";
+import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import type { FutureLetters } from "../typechain-types/FutureLetters";
+import { toUtf8Bytes } from "ethers";
+
+// Loadfixture utility
+export function loadFixture<T>(fixture: () => Promise<T>): Promise<T> {
+  return fixture();
+}
 
 export interface TestLetter {
-  title: string;
-  content: string;
+  encryptedContent: string;
   unlockTime: number;
-  isPublic: boolean;
-  mood: string;
   publicKey: string;
+  isPublic: boolean;
+  title: string;
+  mood: string;
 }
 
 export const MIN_LOCK_TIME = 3 * 24 * 60 * 60; // 3 days in seconds
 export const MAX_LOCK_TIME = 50 * 365 * 24 * 60 * 60; // 50 years in seconds
 
 export async function deployContract(): Promise<FutureLetters> {
-  const FutureLetters = await hre.ethers.getContractFactory("FutureLetters");
+  const FutureLetters = await ethers.getContractFactory("FutureLetters");
   const contract = await FutureLetters.deploy();
-  return contract;
-}
-
-export async function createTestLetter(
-  contract: FutureLetters,
-  signer: SignerWithAddress,
-  overrides: Partial<TestLetter> = {}
-): Promise<{ letter: TestLetter; letterId: number }> {
-  const defaultLetter: TestLetter = {
-    title: "Test Letter",
-    content: "This is a test letter content",
-    unlockTime: Math.floor(Date.now() / 1000) + MIN_LOCK_TIME,
-    isPublic: false,
-    mood: "Happy",
-    publicKey: "0x1234567890abcdef",
-  };
-
-  const letter = { ...defaultLetter, ...overrides };
-  
-  const tx = await contract.connect(signer).writeLetter(
-    letter.title,
-    letter.content,
-    letter.unlockTime,
-    letter.isPublic,
-    letter.mood,
-    letter.publicKey
-  );
-
-  const receipt = await tx.wait();
-  const event = receipt.events?.find(e => e.event === "LetterWritten");
-  const letterId = event?.args?.letterId.toNumber();
-
-  return { letter, letterId };
-}
-
-export async function timeTravel(seconds: number): Promise<void> {
-  await ethers.provider.send("evm_increaseTime", [seconds]);
-  await ethers.provider.send("evm_mine");
+  await contract.waitForDeployment();
+  return contract as FutureLetters;
 }
 
 export async function getCurrentTimestamp(): Promise<number> {
-  const block = await ethers.provider.getBlock("latest");
+  const block = await hre.ethers.provider.getBlock('latest');
+  if (!block) {
+    throw new Error('Failed to get latest block');
+  }
   return block.timestamp;
 }
 
-export function generateTestLetters(count: number): TestLetter[] {
-  return Array.from({ length: count }, (_, i) => ({
-    title: `Test Letter ${i + 1}`,
-    content: `This is test letter content ${i + 1}`,
-    unlockTime: Math.floor(Date.now() / 1000) + MIN_LOCK_TIME + (i * 24 * 60 * 60), // Each letter unlocks 1 day after the previous
-    isPublic: i % 2 === 0, // Alternate between public and private
-    mood: ["Happy", "Sad", "Excited", "Reflective"][i % 4],
-    publicKey: `0x${(i + 1).toString().padStart(16, "0")}`,
-  }));
-}
-
-export async function createMultipleLetters(
-  contract: FutureLetters,
-  signer: SignerWithAddress,
-  count: number
-): Promise<{ letters: TestLetter[]; letterIds: number[] }> {
-  const letters = generateTestLetters(count);
-  const letterIds: number[] = [];
-
-  for (const letter of letters) {
-    const { letterId } = await createTestLetter(contract, signer, letter);
-    letterIds.push(letterId);
-  }
-
-  return { letters, letterIds };
-}
-
-export async function getLetterDetails(
-  contract: FutureLetters,
-  letterId: number
-): Promise<{
-  title: string;
-  content: string;
-  unlockTime: number;
-  isPublic: boolean;
-  mood: string;
-  isRead: boolean;
-  isUnlocked: boolean;
-}> {
-  const letter = await contract.getLetter(letterId);
+export async function createValidLetter(
+  options: Partial<TestLetter> = {}
+): Promise<TestLetter> {
   const currentTime = await getCurrentTimestamp();
-
+  
   return {
-    title: letter.title,
-    content: letter.content,
-    unlockTime: letter.unlockTime.toNumber(),
-    isPublic: letter.isPublic,
-    mood: letter.mood,
-    isRead: letter.isRead,
-    isUnlocked: currentTime >= letter.unlockTime.toNumber(),
+    encryptedContent: generateRandomHex(),
+    unlockTime: currentTime + MIN_LOCK_TIME + 100,
+    publicKey: generateRandomHex(),
+    isPublic: false,
+    title: "Test Letter",
+    mood: "happy",
+    ...options
   };
 }
 
-export async function expectRevert(
-  promise: Promise<any>,
-  expectedError: string
-): Promise<void> {
+export async function createLetter(
+  contract: FutureLetters,
+  signer: SignerWithAddress,
+  options: Partial<TestLetter> = {}
+): Promise<any> {
+  const letterData = await createValidLetter(options);
+  
+  const tx = await contract.connect(signer).writeLetter(
+    letterData.encryptedContent,
+    letterData.unlockTime,
+    letterData.publicKey,
+    letterData.isPublic,
+    letterData.title,
+    letterData.mood
+  );
+
+  return tx.wait();
+}
+
+export async function timeTravel(seconds: number): Promise<void> {
+  await hre.ethers.provider.send("evm_increaseTime", [seconds]);
+  await hre.ethers.provider.send("evm_mine", []);
+}
+
+export async function getCurrentBlock(): Promise<any> {
+  const block = await hre.ethers.provider.getBlock("latest");
+  return block;
+}
+
+export async function expectRevert(promise: Promise<any>, errorMessage: string): Promise<void> {
   try {
     await promise;
-    throw new Error("Expected promise to reject but it resolved");
+    throw new Error("Expected transaction to revert");
   } catch (error: any) {
-    if (!error.message.includes(expectedError)) {
-      throw new Error(
-        `Expected error message to include "${expectedError}" but got "${error.message}"`
-      );
+    if (error.message.includes(errorMessage)) {
+      return; // Expected revert
     }
+    throw error; // Unexpected error
   }
+}
+
+export function generateRandomAddress(): string {
+  return hre.ethers.Wallet.createRandom().address;
+}
+
+export function generateRandomBytes32(): string {
+  return hre.ethers.hexlify(hre.ethers.randomBytes(32));
+}
+
+export const VALID_MOODS = [
+  "happy", "sad", "angry", "excited", "nostalgic", 
+  "grateful", "anxious", "hopeful"
+] as const;
+
+export function getRandomMood(): string {
+  const mood = VALID_MOODS[Math.floor(Math.random() * VALID_MOODS.length)];
+  return mood || 'happy';
+}
+
+export function getValidUnlockTime(offsetSeconds: number = 0): number {
+  return Math.floor(Date.now() / 1000) + MIN_LOCK_TIME + 100 + offsetSeconds;
+}
+
+export function getInvalidShortUnlockTime(): number {
+  return Math.floor(Date.now() / 1000) + MIN_LOCK_TIME - 100;
+}
+
+export function getInvalidLongUnlockTime(): number {
+  return Math.floor(Date.now() / 1000) + MAX_LOCK_TIME + 100;
+} 
+
+// Utility to generate a random hex string of the given byte length (default 32 bytes)
+export function generateRandomHex(bytes: number = 32): string {
+  return hre.ethers.hexlify(hre.ethers.randomBytes(bytes));
 } 

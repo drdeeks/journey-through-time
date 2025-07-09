@@ -18,6 +18,7 @@ typechain-types/
 # IDE
 .vscode/
 .idea/
+.cursor/
 *.swp
 *.swo
 

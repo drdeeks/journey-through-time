@@ -1,7 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-contract FutureLetters {
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/utils/Base64.sol";
+
+/// @title FutureLetters with Capsule NFT minting
+/// Each letter creation mints an ERC-721 "Capsule" NFT to the author. The tokenURI
+/// is on-chain JSON containing `createdAt` and `unlockTime` so front-end can render
+/// a preview without external storage.
+contract FutureLetters is ERC721URIStorage {
+    using Strings for uint256;
+
+    string private constant _baseJsonPrefix = "data:application/json;base64,";
+
     struct Letter {
         bytes encryptedContent;
         uint256 unlockTime;
@@ -87,7 +99,7 @@ contract FutureLetters {
         _;
     }
     
-    constructor() {
+    constructor() ERC721("Time Capsule", "CAPS") {
         // Initialize valid mood options
         string[15] memory moods = [
             "happy",
@@ -147,6 +159,20 @@ contract FutureLetters {
         
         userLetters[msg.sender].push(newLetter);
         uint256 letterId = userLetters[msg.sender].length - 1;
+
+        // Mint Capsule NFT to author where tokenId == letterId
+        _safeMint(msg.sender, letterId);
+
+        // Build on-chain token URI with metadata
+        string memory json = string.concat(
+            '{"name":"Capsule #', letterId.toString(), '\",',
+            '"description":"Time-locked letter capsule",',
+            '"attributes":[',
+                '{"trait_type":"Created At","value":', block.timestamp.toString(), '},',
+                '{"trait_type":"Unlock Time","display_type":"date","value":', _unlockTime.toString(), '}',
+            ']}'
+        );
+        _setTokenURI(letterId, string.concat(_baseJsonPrefix, Base64.encode(bytes(json))));
         
         // Update user profile
         UserProfile storage profile = userProfiles[msg.sender];
@@ -357,9 +383,9 @@ contract FutureLetters {
             letter.unlockTime
         );
     }
-    function getPublicLetters(uint256 _offset, uint256 _limit) 
+    function getPublicLetters(/*uint256 _offset, uint256 _limit*/) 
         external 
-        view 
+        pure 
         returns (
             address[] memory authors,
             uint256[] memory letterIds,

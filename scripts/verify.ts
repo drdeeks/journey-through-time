@@ -5,7 +5,7 @@ import { join } from "path";
 async function main() {
   try {
     // Read deployment info
-    const network = process.env.HARDHAT_NETWORK || "monad-testnet";
+    const network = process.env['HARDHAT_NETWORK'] || "monad-testnet";
     const deploymentFile = join(__dirname, "../deployments", `${network}.json`);
 
     if (!existsSync(deploymentFile)) {
