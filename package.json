@@ -9,17 +9,17 @@
     "@mui/material": "^5.15.6",
     "@mui/x-date-pickers": "^6.19.2",
     "@onsol/tldparser": "^1.0.6",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
+    "@testing-library/react": "^14.2.1",
+    "@testing-library/user-event": "^14.5.2",
     "@web3-react/core": "^6.1.9",
     "@web3-react/injected-connector": "^6.0.7",
-    "date-fns": "^2.30.0",
+    "date-fns": "^3.6.0",
     "ethers": "^6.14.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.21.3",
     "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^3.5.2"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -45,12 +45,16 @@
     "deploy:foundry": "bash scripts/deploy_foundry.sh",
     "verify:foundry": "bash scripts/verify_foundry.sh",
     "security:audit": "npm audit --audit-level=moderate",
+    "security:fix": "npm audit fix",
+    "security:update": "npm update",
     "prebuild": "npm run type-check && npm run lint:ts",
     "postinstall": "hardhat compile",
     "dev": "concurrently \"npm run node\" \"npm start\"",
     "test:watch": "react-scripts test --watchAll",
     "analyze": "npm run build && npx source-map-explorer 'build/static/js/*.js'",
-    "gas-report": "REPORT_GAS=true hardhat test"
+    "gas-report": "REPORT_GAS=true hardhat test",
+    "performance:analyze": "npm run build && npx lighthouse --output=json --output-path=./lighthouse-report.json http://localhost:3000",
+    "accessibility:test": "npx pa11y http://localhost:3000"
   },
   "eslintConfig": {
     "extends": [
@@ -121,33 +125,38 @@
     }
   },
   "devDependencies": {
-    "@commitlint/cli": "^17.0.0",
-    "@commitlint/config-conventional": "^17.0.0",
+    "@commitlint/cli": "^18.6.1",
+    "@commitlint/config-conventional": "^18.6.2",
     "@mui/types": "^7.4.3",
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
     "@openzeppelin/contracts": "^5.3.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@types/chai": "^4.3.20",
-    "@types/date-fns": "^2.5.3",
-    "@types/jest": "^27.5.2",
-    "@types/node": "^20.0.0",
+    "@types/date-fns": "^3.6.0",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.24",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
-    "@typescript-eslint/eslint-plugin": "^5.62.0",
-    "@typescript-eslint/parser": "^5.62.0",
-    "concurrently": "^8.0.0",
-    "eslint": "^8.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.1.0",
+    "@typescript-eslint/parser": "^7.1.0",
+    "concurrently": "^8.2.2",
+    "eslint": "^8.57.0",
     "eslint-plugin-jsx-a11y": "^6.8.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "hardhat": "^2.19.4",
     "hardhat-gas-reporter": "^1.0.8",
-    "prettier": "^3.0.0",
+    "prettier": "^3.2.5",
     "solhint": "^4.0.0",
     "ts-node": "^10.9.2",
-    "typescript": "^4.9.5"
+    "typescript": "^5.3.3"
   },
   "overrides": {
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7"
+  },
+  "resolutions": {
+    "glob": "^10.3.10",
+    "semver": "^7.5.4",
+    "word-wrap": "^1.2.5"
   }
 }

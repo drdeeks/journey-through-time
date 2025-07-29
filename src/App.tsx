@@ -6,6 +6,7 @@ import { BrowserProvider } from 'ethers';
 
 // Components
 import Layout from './components/Layout';
+import ErrorBoundary from './components/ErrorBoundary';
 import Home from './pages/Home';
 import WriteLetter from './pages/WriteLetter';
 import MyLetters from './pages/MyLetters';
@@ -30,6 +31,18 @@ const theme = createTheme({
       default: '#121212',
       paper: '#1e1e1e',
     },
+    error: {
+      main: '#f44336',
+    },
+    warning: {
+      main: '#ff9800',
+    },
+    info: {
+      main: '#2196f3',
+    },
+    success: {
+      main: '#4caf50',
+    },
   },
   typography: {
     fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
@@ -41,12 +54,30 @@ const theme = createTheme({
       fontSize: '2rem',
       fontWeight: 500,
     },
+    h3: {
+      fontSize: '1.75rem',
+      fontWeight: 500,
+    },
+    h4: {
+      fontSize: '1.5rem',
+      fontWeight: 500,
+    },
+    h5: {
+      fontSize: '1.25rem',
+      fontWeight: 500,
+    },
+    h6: {
+      fontSize: '1rem',
+      fontWeight: 500,
+    },
   },
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
           borderRadius: 8,
+          textTransform: 'none',
+          fontWeight: 500,
         },
       },
     },
@@ -58,6 +89,32 @@ const theme = createTheme({
         },
       },
     },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+        },
+      },
+    },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-root': {
+            borderRadius: 8,
+          },
+        },
+      },
+    },
+  },
+  shape: {
+    borderRadius: 8,
   },
 });
 
@@ -67,29 +124,31 @@ function getLibrary(provider: any) {
 
 function App() {
   return (
-    <Web3ReactProvider getLibrary={getLibrary}>
-      <Web3Provider>
-        <UserProfileProvider>
-          <EngagementProvider>
-            <ThemeProvider theme={theme}>
-              <CssBaseline />
-              <Router>
-                <Layout>
-                  <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/write" element={<WriteLetter />} />
-                    <Route path="/my-letters" element={<MyLetters />} />
-                    <Route path="/public-letters" element={<PublicLetters />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/profile" element={<Profile />} />
-                  </Routes>
-                </Layout>
-              </Router>
-            </ThemeProvider>
-          </EngagementProvider>
-        </UserProfileProvider>
-      </Web3Provider>
-    </Web3ReactProvider>
+    <ErrorBoundary>
+      <Web3ReactProvider getLibrary={getLibrary}>
+        <Web3Provider>
+          <UserProfileProvider>
+            <EngagementProvider>
+              <ThemeProvider theme={theme}>
+                <CssBaseline />
+                <Router>
+                  <Layout>
+                    <Routes>
+                      <Route path="/" element={<Home />} />
+                      <Route path="/write" element={<WriteLetter />} />
+                      <Route path="/my-letters" element={<MyLetters />} />
+                      <Route path="/public-letters" element={<PublicLetters />} />
+                      <Route path="/settings" element={<Settings />} />
+                      <Route path="/profile" element={<Profile />} />
+                    </Routes>
+                  </Layout>
+                </Router>
+              </ThemeProvider>
+            </EngagementProvider>
+          </UserProfileProvider>
+        </Web3Provider>
+      </Web3ReactProvider>
+    </ErrorBoundary>
   );
 }
 
