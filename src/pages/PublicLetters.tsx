@@ -1,331 +1,474 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Buffer } from 'buffer';
 import {
   Box,
+  Paper,
   Typography,
   Grid,
   Card,
   CardContent,
-  Paper,
-  Alert,
+  CardActions,
+  Button,
   Chip,
   CircularProgress,
-  Container,
-  Button,
+  Alert,
+  Skeleton,
+  Pagination,
   TextField,
   InputAdornment,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  AlertTitle,
+  IconButton,
+  Tooltip,
+  Snackbar,
 } from '@mui/material';
 import {
-  Public as PublicIcon,
   Search as SearchIcon,
-  FilterList as FilterIcon,
-  Schedule as ScheduleIcon,
+  Clear as ClearIcon,
+  Public as PublicIcon,
   Person as PersonIcon,
+  Schedule as ScheduleIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
-import { formatDistanceToNow } from 'date-fns';
 import { useWeb3 } from '../contexts/Web3Context';
-import type { Letter } from '../types';
-import { VALID_MOODS } from '../types';
+import { formatDistanceToNow } from 'date-fns';
+import { Letter, FutureLettersContract, LoadingState, ErrorState } from '../types';
+
+interface PublicLetter {
+  author: string;
+  letterId: number;
+  title: string;
+  mood: string;
+  createdAt: number;
+  unlockedAt: number;
+}
+
+const ITEMS_PER_PAGE = 12;
 
 const PublicLetters: React.FC = () => {
-  const { contract, isConnected } = useWeb3();
-  const [letters, setLetters] = useState<Letter[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { contract, account, isConnected } = useWeb3();
+  const [publicLetters, setPublicLetters] = useState<PublicLetter[]>([]);
+  const [loadingState, setLoadingState] = useState<LoadingState>({ isLoading: true });
+  const [errorState, setErrorState] = useState<ErrorState>({ hasError: false });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalLetters, setTotalLetters] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedMood, setSelectedMood] = useState<string>('all');
+  const [selectedMood, setSelectedMood] = useState<string>('');
+  const [notifications, setNotifications] = useState({
+    show: false,
+    message: '',
+    severity: 'success' as 'success' | 'error' | 'info' | 'warning',
+  });
 
-  // Mock data for demonstration (until public letter tracking is implemented in the contract)
-  const mockPublicLetters: Letter[] = [
-    {
-      id: 1,
-      title: 'To My Future Self in 2030',
-      unlockTime: Date.now() / 1000 - 86400, // Already unlocked
-      createdAt: Date.now() / 1000 - 86400 * 30, // 30 days ago
-      isRead: true,
-      isUnlocked: true,
-      isPublic: true,
-      mood: 'hopeful',
-    },
-    {
-      id: 2,
-      title: 'Reflections on a Difficult Year',
-      unlockTime: Date.now() / 1000 - 3600, // Recently unlocked
-      createdAt: Date.now() / 1000 - 86400 * 365, // 1 year ago
-      isRead: true,
-      isUnlocked: true,
-      isPublic: true,
-      mood: 'nostalgic',
-    },
-    {
-      id: 3,
-      title: 'Dreams and Aspirations',
-      unlockTime: Date.now() / 1000 - 86400 * 7, // Week ago
-      createdAt: Date.now() / 1000 - 86400 * 90, // 3 months ago
-      isRead: true,
-      isUnlocked: true,
-      isPublic: true,
-      mood: 'excited',
-    },
-  ];
+  // Memoized filtered letters for performance
+  const filteredLetters = useMemo(() => {
+    let filtered = publicLetters;
+
+    // Filter by search term (title or author)
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (letter) =>
+          letter.title.toLowerCase().includes(term) ||
+          letter.author.toLowerCase().includes(term)
+      );
+    }
+
+    // Filter by mood
+    if (selectedMood) {
+      filtered = filtered.filter((letter) => letter.mood === selectedMood);
+    }
+
+    return filtered;
+  }, [publicLetters, searchTerm, selectedMood]);
 
   const fetchPublicLetters = useCallback(async () => {
     if (!contract || !isConnected) {
-      setLoading(false);
+      setLoadingState({ isLoading: false });
       return;
     }
 
     try {
-      setLoading(true);
-      setError(null);
+      setLoadingState({ isLoading: true, message: 'Fetching public letters...' });
+      setErrorState({ hasError: false });
 
-      // TODO: Implement actual contract call when public letter tracking is available
-      // For now, using mock data
-      setTimeout(() => {
-        setLetters(mockPublicLetters);
-        setLoading(false);
-      }, 1000);
-    } catch (err: any) {
-      console.error('Failed to fetch public letters:', err);
-      setError(err.message || 'Failed to fetch public letters');
-      setLoading(false);
+      const typedContract = contract as unknown as FutureLettersContract;
+      
+      // Get total count first
+      const totalCount = await typedContract.getPublicLetterCount();
+      setTotalLetters(Number(totalCount));
+      setTotalPages(Math.ceil(Number(totalCount) / ITEMS_PER_PAGE));
+
+      // Calculate offset for current page
+      const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+      
+      // Fetch public letters with pagination
+      const [
+        authors,
+        letterIds,
+        titles,
+        moods,
+        createdAts,
+        unlockedAts,
+      ] = await typedContract.getPublicLetters(offset, ITEMS_PER_PAGE);
+
+      const letters: PublicLetter[] = [];
+      for (let i = 0; i < authors.length; i++) {
+        letters.push({
+          author: authors[i],
+          letterId: Number(letterIds[i]),
+          title: titles[i],
+          mood: moods[i],
+          createdAt: Number(createdAts[i]),
+          unlockedAt: Number(unlockedAts[i]),
+        });
+      }
+
+      setPublicLetters(letters);
+      setLoadingState({ isLoading: false });
+    } catch (error) {
+      console.error('Failed to fetch public letters:', error);
+      setErrorState({
+        hasError: true,
+        message: 'Failed to fetch public letters. Please try again.',
+      });
+      setLoadingState({ isLoading: false });
     }
-  }, [contract, isConnected]);
+  }, [contract, isConnected, currentPage]);
 
   useEffect(() => {
     fetchPublicLetters();
   }, [fetchPublicLetters]);
 
-  const filteredLetters = letters.filter((letter) => {
-    const matchesSearch = letter.title.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesMood = selectedMood === 'all' || letter.mood === selectedMood;
-    return matchesSearch && matchesMood;
-  });
+  const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(event.target.value);
+  };
+
+  const handleMoodFilter = (mood: string) => {
+    setSelectedMood(selectedMood === mood ? '' : mood);
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setSelectedMood('');
+  };
+
+  const handleRefresh = () => {
+    fetchPublicLetters();
+    setNotifications({
+      show: true,
+      message: 'Public letters refreshed successfully!',
+      severity: 'success',
+    });
+  };
+
+  const handleCloseNotification = () => {
+    setNotifications({ ...notifications, show: false });
+  };
 
   const getMoodColor = (mood: string) => {
     const moodColors: Record<string, string> = {
-      happy: '#4CAF50',
-      sad: '#2196F3',
-      angry: '#F44336',
-      excited: '#FF9800',
-      nostalgic: '#9C27B0',
-      grateful: '#8BC34A',
-      anxious: '#FF5722',
-      hopeful: '#00BCD4',
+      happy: '#4caf50',
+      sad: '#2196f3',
+      angry: '#f44336',
+      excited: '#ff9800',
+      nostalgic: '#9c27b0',
+      grateful: '#4caf50',
+      anxious: '#ff9800',
+      hopeful: '#4caf50',
+      lost: '#607d8b',
+      confused: '#9e9e9e',
+      worried: '#ff9800',
+      melancholy: '#607d8b',
+      depressed: '#3f51b5',
+      joyful: '#4caf50',
+      irate: '#f44336',
     };
     return moodColors[mood] || '#757575';
   };
 
+  const getMoodEmoji = (mood: string) => {
+    const moodEmojis: Record<string, string> = {
+      happy: '😊',
+      sad: '😢',
+      angry: '😠',
+      excited: '🤩',
+      nostalgic: '🥺',
+      grateful: '🙏',
+      anxious: '😰',
+      hopeful: '✨',
+      lost: '😵',
+      confused: '🤔',
+      worried: '😟',
+      melancholy: '😔',
+      depressed: '😞',
+      joyful: '😄',
+      irate: '😤',
+    };
+    return moodEmojis[mood] || '📝';
+  };
+
+  const renderLetterCard = (letter: PublicLetter) => (
+    <Grid item xs={12} sm={6} md={4} lg={3} key={`${letter.author}-${letter.letterId}`}>
+      <Card
+        sx={{
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+          '&:hover': {
+            transform: 'translateY(-4px)',
+            boxShadow: '0 8px 25px rgba(0,0,0,0.15)',
+          },
+        }}
+      >
+        <CardContent sx={{ flexGrow: 1, pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+            <PublicIcon sx={{ mr: 1, color: 'primary.main' }} />
+            <Typography variant="h6" component="h3" noWrap>
+              {letter.title}
+            </Typography>
+          </Box>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <PersonIcon sx={{ mr: 1, fontSize: 'small', color: 'text.secondary' }} />
+            <Typography variant="body2" color="text.secondary" noWrap>
+              {letter.author.slice(0, 6)}...{letter.author.slice(-4)}
+            </Typography>
+          </Box>
+
+          <Chip
+            label={`${getMoodEmoji(letter.mood)} ${letter.mood}`}
+            size="small"
+            sx={{
+              backgroundColor: getMoodColor(letter.mood),
+              color: 'white',
+              fontWeight: 'bold',
+              mb: 2,
+            }}
+          />
+
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+            <ScheduleIcon sx={{ mr: 1, fontSize: 'small', color: 'text.secondary' }} />
+            <Typography variant="caption" color="text.secondary">
+              Unlocked {formatDistanceToNow(letter.unlockedAt * 1000, { addSuffix: true })}
+            </Typography>
+          </Box>
+
+          <Typography variant="caption" color="text.secondary">
+            Created {formatDistanceToNow(letter.createdAt * 1000, { addSuffix: true })}
+          </Typography>
+        </CardContent>
+
+        <CardActions sx={{ pt: 0 }}>
+          <Button
+            size="small"
+            variant="outlined"
+            fullWidth
+            onClick={() => {
+              // TODO: Implement letter reading functionality
+              setNotifications({
+                show: true,
+                message: 'Letter reading feature coming soon!',
+                severity: 'info',
+              });
+            }}
+          >
+            Read Letter
+          </Button>
+        </CardActions>
+      </Card>
+    </Grid>
+  );
+
+  const renderSkeletonCards = () => (
+    <>
+      {Array.from({ length: ITEMS_PER_PAGE }).map((_, index) => (
+        <Grid item xs={12} sm={6} md={4} lg={3} key={index}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Skeleton variant="text" width="80%" height={32} />
+              <Skeleton variant="text" width="60%" height={24} />
+              <Skeleton variant="rectangular" width="40%" height={32} sx={{ borderRadius: 1, mb: 1 }} />
+              <Skeleton variant="text" width="70%" height={20} />
+              <Skeleton variant="text" width="50%" height={20} />
+            </CardContent>
+            <CardActions>
+              <Skeleton variant="rectangular" width="100%" height={36} sx={{ borderRadius: 1 }} />
+            </CardActions>
+          </Card>
+        </Grid>
+      ))}
+    </>
+  );
+
   if (!isConnected) {
     return (
-      <Container maxWidth="md">
-        <Box sx={{ textAlign: 'center', mt: 4 }}>
-          <Alert severity="info">
-            <AlertTitle>Wallet Not Connected</AlertTitle>
-            Please connect your wallet to explore public letters from the community.
-          </Alert>
-        </Box>
-      </Container>
+      <Box sx={{ p: 3 }}>
+        <Alert severity="info">
+          Please connect your wallet to view public letters.
+        </Alert>
+      </Box>
     );
   }
 
   return (
-    <Container maxWidth="lg">
-      <Paper sx={{ p: 4 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
-          <PublicIcon sx={{ mr: 2, fontSize: 32 }} color="primary" />
-          <Typography variant="h4" component="h1">
-            Public Letters
+    <Box sx={{ p: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Public Letters
+        </Typography>
+        <Tooltip title="Refresh public letters">
+          <IconButton onClick={handleRefresh} disabled={loadingState.isLoading}>
+            <RefreshIcon />
+          </IconButton>
+        </Tooltip>
+      </Box>
+
+      {/* Search and Filter Section */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={6}>
+            <TextField
+              fullWidth
+              placeholder="Search by title or author..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+                endAdornment: searchTerm && (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setSearchTerm('')}>
+                      <ClearIcon />
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              {['happy', 'sad', 'excited', 'nostalgic', 'grateful', 'hopeful'].map((mood) => (
+                <Chip
+                  key={mood}
+                  label={getMoodEmoji(mood)}
+                  size="small"
+                  clickable
+                  color={selectedMood === mood ? 'primary' : 'default'}
+                  onClick={() => handleMoodFilter(mood)}
+                  sx={{
+                    backgroundColor: selectedMood === mood ? getMoodColor(mood) : 'transparent',
+                    color: selectedMood === mood ? 'white' : 'inherit',
+                  }}
+                />
+              ))}
+              {(searchTerm || selectedMood) && (
+                <Chip
+                  label="Clear"
+                  size="small"
+                  clickable
+                  onClick={handleClearFilters}
+                  variant="outlined"
+                />
+              )}
+            </Box>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Loading State */}
+      {loadingState.isLoading && (
+        <Box sx={{ textAlign: 'center', py: 4 }}>
+          <CircularProgress />
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            {loadingState.message}
           </Typography>
         </Box>
+      )}
 
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-          Discover letters that community members have chosen to share publicly after unlocking.
-          These personal time capsules offer glimpses into hopes, dreams, and reflections from the
-          past.
-        </Typography>
-
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-            {error}
-          </Alert>
-        )}
-
-        {/* Search and Filter Controls */}
-        <Box sx={{ mb: 4 }}>
-          <Grid container spacing={3} alignItems="center">
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                placeholder="Search letters..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <FormControl fullWidth>
-                <InputLabel>Filter by Mood</InputLabel>
-                <Select
-                  value={selectedMood}
-                  label="Filter by Mood"
-                  onChange={(e) => setSelectedMood(e.target.value)}
-                  startAdornment={<FilterIcon sx={{ mr: 1 }} />}
-                >
-                  <MenuItem value="all">All Moods</MenuItem>
-                  {VALID_MOODS.map((mood) => (
-                    <MenuItem key={mood} value={mood}>
-                      {mood.charAt(0).toUpperCase() + mood.slice(1)}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={2}>
-              <Button
-                fullWidth
-                variant="outlined"
-                startIcon={<RefreshIcon />}
-                onClick={fetchPublicLetters}
-                disabled={loading}
-              >
-                Refresh
-              </Button>
-            </Grid>
-          </Grid>
-        </Box>
-
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-            <CircularProgress />
-          </Box>
-        ) : filteredLetters.length === 0 ? (
-          <Box sx={{ textAlign: 'center', py: 8 }}>
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              {searchTerm || selectedMood !== 'all'
-                ? 'No letters match your search criteria'
-                : 'No public letters available yet'}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {searchTerm || selectedMood !== 'all'
-                ? 'Try adjusting your search terms or filters'
-                : 'Be the first to share a public letter with the community!'}
-            </Typography>
-          </Box>
-        ) : (
-          <>
-            <Typography variant="h6" sx={{ mb: 3 }}>
-              Found {filteredLetters.length} public letter{filteredLetters.length !== 1 ? 's' : ''}
-            </Typography>
-
-            <Grid container spacing={3}>
-              {filteredLetters.map((letter) => (
-                <Grid item xs={12} md={6} lg={4} key={letter.id}>
-                  <Card
-                    sx={{
-                      height: '100%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      transition: 'transform 0.2s, box-shadow 0.2s',
-                      '&:hover': {
-                        transform: 'translateY(-2px)',
-                        boxShadow: 4,
-                      },
-                    }}
-                  >
-                    <CardContent sx={{ flexGrow: 1 }}>
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'flex-start',
-                          justifyContent: 'space-between',
-                          mb: 2,
-                        }}
-                      >
-                        <Typography
-                          variant="h6"
-                          component="h3"
-                          sx={{
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            flex: 1,
-                            mr: 1,
-                          }}
-                        >
-                          {letter.title}
-                        </Typography>
-                        <PublicIcon color="primary" fontSize="small" />
-                      </Box>
-
-                      <Chip
-                        label={letter.mood.charAt(0).toUpperCase() + letter.mood.slice(1)}
-                        size="small"
-                        sx={{
-                          backgroundColor: getMoodColor(letter.mood),
-                          color: 'white',
-                          mb: 2,
-                        }}
-                      />
-
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                        <PersonIcon fontSize="small" color="action" sx={{ mr: 1 }} />
-                        <Typography variant="body2" color="text.secondary">
-                          Anonymous Author
-                        </Typography>
-                      </Box>
-
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                        <ScheduleIcon fontSize="small" color="action" sx={{ mr: 1 }} />
-                        <Typography variant="body2" color="text.secondary">
-                          Written {formatDistanceToNow(new Date(letter.createdAt * 1000))} ago
-                        </Typography>
-                      </Box>
-
-                      <Typography variant="body2" color="text.secondary">
-                        Unlocked {formatDistanceToNow(new Date(letter.unlockTime * 1000))} ago
-                      </Typography>
-                    </CardContent>
-
-                    <Box sx={{ p: 2, pt: 0 }}>
-                      <Button
-                        fullWidth
-                        variant="outlined"
-                        size="small"
-                        disabled
-                        sx={{ opacity: 0.6 }}
-                      >
-                        Read Letter (Coming Soon)
-                      </Button>
-                    </Box>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          </>
-        )}
-
-        {/* Feature Notice */}
-        <Alert severity="info" sx={{ mt: 4 }}>
-          <AlertTitle>Coming Soon</AlertTitle>
-          The ability to read full public letter content is currently being developed. This feature
-          will allow you to explore the thoughts and experiences shared by other time travelers.
+      {/* Error State */}
+      {errorState.hasError && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {errorState.message}
         </Alert>
-      </Paper>
-    </Container>
+      )}
+
+      {/* Results Summary */}
+      {!loadingState.isLoading && !errorState.hasError && (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="body2" color="text.secondary">
+            Showing {filteredLetters.length} of {totalLetters} public letters
+            {searchTerm && ` matching "${searchTerm}"`}
+            {selectedMood && ` with mood "${selectedMood}"`}
+          </Typography>
+        </Box>
+      )}
+
+      {/* Letters Grid */}
+      {!loadingState.isLoading && !errorState.hasError && (
+        <>
+          {filteredLetters.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                No public letters found
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {searchTerm || selectedMood
+                  ? 'Try adjusting your search or filters'
+                  : 'Be the first to share a public letter!'}
+              </Typography>
+            </Box>
+          ) : (
+            <Grid container spacing={3}>
+              {filteredLetters.map(renderLetterCard)}
+            </Grid>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+              <Pagination
+                count={totalPages}
+                page={currentPage}
+                onChange={handlePageChange}
+                color="primary"
+                size="large"
+              />
+            </Box>
+          )}
+        </>
+      )}
+
+      {/* Loading Skeletons */}
+      {loadingState.isLoading && (
+        <Grid container spacing={3}>
+          {renderSkeletonCards()}
+        </Grid>
+      )}
+
+      {/* Notifications */}
+      <Snackbar
+        open={notifications.show}
+        autoHideDuration={6000}
+        onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={handleCloseNotification}
+          severity={notifications.severity}
+          sx={{ width: '100%' }}
+        >
+          {notifications.message}
+        </Alert>
+      </Snackbar>
+    </Box>
   );
 };
 

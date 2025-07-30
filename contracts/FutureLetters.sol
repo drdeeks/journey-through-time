@@ -35,6 +35,21 @@ contract FutureLetters is ERC721URIStorage {
     mapping(address => Letter[]) private userLetters;
     mapping(address => UserProfile) public userProfiles;
     
+    // Efficient public letter tracking
+    struct PublicLetter {
+        address author;
+        uint256 letterId;
+        string title;
+        string mood;
+        uint256 createdAt;
+        uint256 unlockedAt;
+        bool isActive;
+    }
+    
+    PublicLetter[] private publicLetters;
+    mapping(address => mapping(uint256 => uint256)) private publicLetterIndex; // author => letterId => publicLetterIndex
+    mapping(address => uint256[]) private userPublicLetterIds; // author => array of public letter IDs
+    
     // Events for off-chain reminder system
     event LetterCreated(
         address indexed user,
@@ -66,6 +81,11 @@ contract FutureLetters is ERC721URIStorage {
         string title,
         string mood,
         uint256 unlockedAt
+    );
+    
+    event PublicLetterRemoved(
+        address indexed author,
+        uint256 indexed letterId
     );
     
     uint256 public constant MIN_LOCK_TIME = 3 days;
@@ -202,14 +222,62 @@ contract FutureLetters is ERC721URIStorage {
         
         letter.isRead = true;
         
-        // If this is a public letter, emit event for community visibility
+        // If this is a public letter, add it to public letters tracking
         if (letter.isPublic) {
+            _addToPublicLetters(msg.sender, _letterId, letter.title, letter.mood, letter.createdAt, block.timestamp);
             emit PublicLetterAvailable(msg.sender, _letterId, letter.title, letter.mood, block.timestamp);
         }
         
         emit LetterUnlocked(msg.sender, _letterId, block.timestamp, letter.isPublic, letter.mood);
         
         return (letter.encryptedContent, letter.publicKey);
+    }
+    
+    /**
+     * @dev Add letter to public letters tracking
+     */
+    function _addToPublicLetters(
+        address _author,
+        uint256 _letterId,
+        string memory _title,
+        string memory _mood,
+        uint256 _createdAt,
+        uint256 _unlockedAt
+    ) private {
+        PublicLetter memory newPublicLetter = PublicLetter({
+            author: _author,
+            letterId: _letterId,
+            title: _title,
+            mood: _mood,
+            createdAt: _createdAt,
+            unlockedAt: _unlockedAt,
+            isActive: true
+        });
+        
+        uint256 publicIndex = publicLetters.length;
+        publicLetters.push(newPublicLetter);
+        
+        // Track the mapping
+        publicLetterIndex[_author][_letterId] = publicIndex;
+        userPublicLetterIds[_author].push(_letterId);
+    }
+    
+    /**
+     * @dev Remove letter from public letters (author only)
+     * @param _letterId The ID of the letter to remove from public view
+     */
+    function removeFromPublicLetters(uint256 _letterId) external onlyLetterOwner(_letterId) {
+        Letter storage letter = userLetters[msg.sender][_letterId];
+        require(letter.isPublic, "Letter is not public");
+        require(letter.isRead, "Letter must be unlocked first");
+        
+        uint256 publicIndex = publicLetterIndex[msg.sender][_letterId];
+        require(publicIndex < publicLetters.length, "Public letter not found");
+        
+        // Mark as inactive instead of removing to maintain indexing
+        publicLetters[publicIndex].isActive = false;
+        
+        emit PublicLetterRemoved(msg.sender, _letterId);
     }
     
     /**
@@ -383,30 +451,138 @@ contract FutureLetters is ERC721URIStorage {
             letter.unlockTime
         );
     }
-    function getPublicLetters(/*uint256 _offset, uint256 _limit*/) 
+    
+    /**
+     * @dev Get public letters with pagination support
+     * @param _offset Starting index for pagination
+     * @param _limit Maximum number of letters to return
+     */
+    function getPublicLetters(uint256 _offset, uint256 _limit) 
         external 
-        pure 
+        view 
         returns (
             address[] memory authors,
             uint256[] memory letterIds,
             string[] memory titles,
+            string[] memory moods,
             uint256[] memory createdAts,
             uint256[] memory unlockedAts
         ) 
     {
-        // This is a simplified version - in production, you'd want to use a mapping
-        // to efficiently track public letters rather than scanning all users
+        uint256 totalPublicLetters = 0;
         
-        // For now, returning empty arrays as this would require additional storage
-        // structure to efficiently track all public letters across users
-        authors = new address[](0);
-        letterIds = new uint256[](0);
-        titles = new string[](0);
-        createdAts = new uint256[](0);
-        unlockedAts = new uint256[](0);
+        // Count active public letters
+        for (uint256 i = 0; i < publicLetters.length; i++) {
+            if (publicLetters[i].isActive) {
+                totalPublicLetters++;
+            }
+        }
         
-        // TODO: Implement efficient public letter tracking
-        // This would require additional mappings to track public letters globally
+        // Calculate actual limit and offset
+        uint256 actualLimit = _limit;
+        if (_offset >= totalPublicLetters) {
+            actualLimit = 0;
+        } else if (_offset + _limit > totalPublicLetters) {
+            actualLimit = totalPublicLetters - _offset;
+        }
+        
+        // Initialize arrays
+        authors = new address[](actualLimit);
+        letterIds = new uint256[](actualLimit);
+        titles = new string[](actualLimit);
+        moods = new string[](actualLimit);
+        createdAts = new uint256[](actualLimit);
+        unlockedAts = new uint256[](actualLimit);
+        
+        if (actualLimit == 0) {
+            return (authors, letterIds, titles, moods, createdAts, unlockedAts);
+        }
+        
+        // Populate arrays with active public letters
+        uint256 currentIndex = 0;
+        uint256 foundCount = 0;
+        
+        for (uint256 i = 0; i < publicLetters.length && foundCount < actualLimit; i++) {
+            if (publicLetters[i].isActive) {
+                if (currentIndex >= _offset) {
+                    PublicLetter storage publicLetter = publicLetters[i];
+                    authors[foundCount] = publicLetter.author;
+                    letterIds[foundCount] = publicLetter.letterId;
+                    titles[foundCount] = publicLetter.title;
+                    moods[foundCount] = publicLetter.mood;
+                    createdAts[foundCount] = publicLetter.createdAt;
+                    unlockedAts[foundCount] = publicLetter.unlockedAt;
+                    foundCount++;
+                }
+                currentIndex++;
+            }
+        }
+    }
+    
+    /**
+     * @dev Get total count of public letters
+     */
+    function getPublicLetterCount() external view returns (uint256) {
+        uint256 count = 0;
+        for (uint256 i = 0; i < publicLetters.length; i++) {
+            if (publicLetters[i].isActive) {
+                count++;
+            }
+        }
+        return count;
+    }
+    
+    /**
+     * @dev Get public letters by a specific author
+     * @param _author The author address
+     */
+    function getPublicLettersByAuthor(address _author) 
+        external 
+        view 
+        returns (
+            uint256[] memory letterIds,
+            string[] memory titles,
+            string[] memory moods,
+            uint256[] memory createdAts,
+            uint256[] memory unlockedAts
+        ) 
+    {
+        uint256[] storage authorLetterIds = userPublicLetterIds[_author];
+        uint256 activeCount = 0;
+        
+        // Count active public letters by this author
+        for (uint256 i = 0; i < authorLetterIds.length; i++) {
+            uint256 publicIndex = publicLetterIndex[_author][authorLetterIds[i]];
+            if (publicIndex < publicLetters.length && publicLetters[publicIndex].isActive) {
+                activeCount++;
+            }
+        }
+        
+        // Initialize arrays
+        letterIds = new uint256[](activeCount);
+        titles = new string[](activeCount);
+        moods = new string[](activeCount);
+        createdAts = new uint256[](activeCount);
+        unlockedAts = new uint256[](activeCount);
+        
+        if (activeCount == 0) {
+            return (letterIds, titles, moods, createdAts, unlockedAts);
+        }
+        
+        // Populate arrays
+        uint256 currentIndex = 0;
+        for (uint256 i = 0; i < authorLetterIds.length && currentIndex < activeCount; i++) {
+            uint256 publicIndex = publicLetterIndex[_author][authorLetterIds[i]];
+            if (publicIndex < publicLetters.length && publicLetters[publicIndex].isActive) {
+                PublicLetter storage publicLetter = publicLetters[publicIndex];
+                letterIds[currentIndex] = publicLetter.letterId;
+                titles[currentIndex] = publicLetter.title;
+                moods[currentIndex] = publicLetter.mood;
+                createdAts[currentIndex] = publicLetter.createdAt;
+                unlockedAts[currentIndex] = publicLetter.unlockedAt;
+                currentIndex++;
+            }
+        }
     }
     
     /**
@@ -433,6 +609,7 @@ contract FutureLetters is ERC721URIStorage {
         }
         return string(bstr);
     }
+    
     function getUserStats() 
         external 
         view 

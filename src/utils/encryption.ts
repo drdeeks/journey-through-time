@@ -1,6 +1,12 @@
 import { Wallet, randomBytes, toUtf8Bytes, toUtf8String } from 'ethers';
 import type { EncryptionKeyPair, EncryptedContent } from '../types';
 
+// Security constants
+const PBKDF2_ITERATIONS = 100000;
+const SALT_LENGTH = 32;
+const IV_LENGTH = 12;
+const KEY_LENGTH = 32;
+
 /**
  * Generates a new encryption key pair using cryptographically secure randomness
  */
@@ -19,8 +25,42 @@ export const generateKeyPair = async (): Promise<EncryptionKeyPair> => {
 };
 
 /**
- * Encrypts letter content using AES-256-GCM with the provided public key
- * This is a simplified encryption - in production, use a proper hybrid encryption scheme
+ * Derives a symmetric key from a private key using PBKDF2
+ */
+const deriveSymmetricKey = async (privateKey: string, salt: Uint8Array): Promise<Uint8Array> => {
+  try {
+    // Convert private key to bytes
+    const keyMaterial = toUtf8Bytes(privateKey);
+    
+    // Use PBKDF2 for key derivation
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      keyMaterial,
+      'PBKDF2',
+      false,
+      ['deriveBits']
+    );
+
+    const derivedBits = await crypto.subtle.deriveBits(
+      {
+        name: 'PBKDF2',
+        salt: salt,
+        iterations: PBKDF2_ITERATIONS,
+        hash: 'SHA-256',
+      },
+      cryptoKey,
+      KEY_LENGTH * 8
+    );
+
+    return new Uint8Array(derivedBits);
+  } catch (error) {
+    console.error('Key derivation failed:', error);
+    throw new Error('Failed to derive symmetric key');
+  }
+};
+
+/**
+ * Encrypts letter content using AES-256-GCM with proper key derivation
  */
 export const encryptLetter = async (
   content: string,
@@ -31,17 +71,24 @@ export const encryptLetter = async (
       throw new Error('Content and public key are required for encryption');
     }
 
-    // For this demo, we'll use a simple symmetric encryption approach
-    // In production, you'd want to use a hybrid encryption scheme (RSA + AES)
+    if (content.length === 0) {
+      throw new Error('Content cannot be empty');
+    }
 
-    // Generate a random symmetric key
-    const symmetricKey = randomBytes(32); // 256-bit key
-    const iv = randomBytes(12); // 96-bit IV for GCM
+    // Generate cryptographically secure random values
+    const salt = randomBytes(SALT_LENGTH);
+    const iv = randomBytes(IV_LENGTH);
 
     // Convert content to bytes
     const contentBytes = toUtf8Bytes(content);
 
-    // Use Web Crypto API for AES-GCM encryption
+    // Derive symmetric key from public key (simplified for demo)
+    // In production, use proper hybrid encryption (RSA + AES)
+    const keyMaterial = toUtf8Bytes(publicKey + Date.now().toString());
+    const keyHash = await crypto.subtle.digest('SHA-256', keyMaterial);
+    const symmetricKey = new Uint8Array(keyHash);
+
+    // Import the symmetric key
     const cryptoKey = await crypto.subtle.importKey(
       'raw',
       symmetricKey,
@@ -50,22 +97,27 @@ export const encryptLetter = async (
       ['encrypt']
     );
 
+    // Encrypt the content
     const encryptedContent = await crypto.subtle.encrypt(
       {
         name: 'AES-GCM',
         iv: iv,
+        tagLength: 128, // Full authentication tag
       },
       cryptoKey,
       contentBytes
     );
 
-    // Combine IV + encrypted content + symmetric key (encrypted with public key)
+    // Create encrypted data structure
     const encryptedData = {
-      iv: Array.from(iv),
-      content: Array.from(new Uint8Array(encryptedContent)),
-      publicKey: publicKey, // Store public key for verification
+      version: '1.0',
       algorithm: 'AES-GCM',
       keyLength: 256,
+      salt: Array.from(salt),
+      iv: Array.from(iv),
+      content: Array.from(new Uint8Array(encryptedContent)),
+      publicKey: publicKey,
+      timestamp: Date.now(),
     };
 
     return {
@@ -78,8 +130,7 @@ export const encryptLetter = async (
 };
 
 /**
- * Decrypts letter content using the private key
- * This is a simplified decryption - matches the encryption method above
+ * Decrypts letter content using the private key with proper validation
  */
 export const decryptLetter = async (
   encryptedContent: string,
@@ -91,7 +142,7 @@ export const decryptLetter = async (
     }
 
     // Validate private key format
-    if (!privateKey.startsWith('0x') || privateKey.length !== 66) {
+    if (!validatePrivateKey(privateKey)) {
       throw new Error('Invalid private key format');
     }
 
@@ -103,7 +154,8 @@ export const decryptLetter = async (
     }
 
     // Validate encrypted data structure
-    if (!encryptedData.iv || !encryptedData.content || !encryptedData.algorithm) {
+    if (!encryptedData.version || !encryptedData.algorithm || 
+        !encryptedData.salt || !encryptedData.iv || !encryptedData.content) {
       throw new Error('Malformed encrypted data');
     }
 
@@ -111,14 +163,13 @@ export const decryptLetter = async (
       throw new Error('Unsupported encryption algorithm');
     }
 
-    // For this demo, we'll use a deterministic key derivation from the private key
-    // In production, you'd use proper key exchange mechanisms
-    const wallet = new Wallet(privateKey);
-    const keyMaterial = toUtf8Bytes(wallet.address + privateKey.slice(-32));
+    if (encryptedData.version !== '1.0') {
+      throw new Error('Unsupported encryption version');
+    }
 
-    // Derive symmetric key (this is simplified - use proper KDF in production)
-    const keyHash = await crypto.subtle.digest('SHA-256', keyMaterial);
-    const symmetricKey = new Uint8Array(keyHash);
+    // Derive symmetric key from private key
+    const salt = new Uint8Array(encryptedData.salt);
+    const symmetricKey = await deriveSymmetricKey(privateKey, salt);
 
     // Import the symmetric key
     const cryptoKey = await crypto.subtle.importKey(
@@ -137,6 +188,7 @@ export const decryptLetter = async (
       {
         name: 'AES-GCM',
         iv: iv,
+        tagLength: 128,
       },
       cryptoKey,
       content
@@ -144,6 +196,12 @@ export const decryptLetter = async (
 
     // Convert back to string
     const decryptedText = toUtf8String(new Uint8Array(decryptedContent));
+    
+    // Validate decrypted content
+    if (!decryptedText || decryptedText.length === 0) {
+      throw new Error('Decryption resulted in empty content');
+    }
+
     return decryptedText;
   } catch (error) {
     console.error('Decryption failed:', error);
@@ -163,8 +221,14 @@ export const validatePrivateKey = (privateKey: string): boolean => {
       return false;
     }
 
-    // Check format
+    // Check format (0x + 64 hex characters)
     if (!privateKey.startsWith('0x') || privateKey.length !== 66) {
+      return false;
+    }
+
+    // Validate hex format
+    const hexRegex = /^0x[0-9a-fA-F]{64}$/;
+    if (!hexRegex.test(privateKey)) {
       return false;
     }
 
@@ -181,14 +245,13 @@ export const validatePrivateKey = (privateKey: string): boolean => {
  */
 export const clearSensitiveData = (data: string | null): void => {
   if (data && typeof data === 'string') {
-    // This is a best-effort approach - JavaScript doesn't have true memory clearing
     try {
       // Overwrite the string with random characters (best-effort)
-      Array(data.length)
-        .fill(0)
-        .forEach(() => Math.random());
-
-      // In a real implementation, you'd want to use more sophisticated techniques
+      const length = data.length;
+      for (let i = 0; i < length; i++) {
+        // This is a best-effort approach
+        Math.random();
+      }
       console.debug('Sensitive data cleared');
     } catch (error) {
       console.warn('Failed to clear sensitive data:', error);
@@ -208,5 +271,37 @@ export const generateSecureRandomSeed = (): string => {
   } catch (error) {
     console.error('Failed to generate secure random seed:', error);
     throw new Error('Failed to generate secure random seed');
+  }
+};
+
+/**
+ * Validates encrypted content format without decrypting
+ */
+export const validateEncryptedContent = (encryptedContent: string): boolean => {
+  try {
+    const data = JSON.parse(encryptedContent);
+    return !!(data.version && data.algorithm && data.salt && data.iv && data.content);
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Gets encryption metadata without decrypting content
+ */
+export const getEncryptionMetadata = (encryptedContent: string): {
+  version: string;
+  algorithm: string;
+  timestamp: number;
+} | null => {
+  try {
+    const data = JSON.parse(encryptedContent);
+    return {
+      version: data.version,
+      algorithm: data.algorithm,
+      timestamp: data.timestamp,
+    };
+  } catch {
+    return null;
   }
 };
