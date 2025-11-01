@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/utils/Base64.sol";
 contract FutureLetters is ERC721URIStorage {
     using Strings for uint256;
 
+    uint256 private _nextTokenId;
     string private constant _baseJsonPrefix = "data:application/json;base64,";
 
     struct Letter {
@@ -179,20 +180,22 @@ contract FutureLetters is ERC721URIStorage {
         
         userLetters[msg.sender].push(newLetter);
         uint256 letterId = userLetters[msg.sender].length - 1;
+        uint256 tokenId = _nextTokenId;
+        _nextTokenId++;
 
         // Mint Capsule NFT to author where tokenId == letterId
-        _safeMint(msg.sender, letterId);
+        _safeMint(msg.sender, tokenId);
 
         // Build on-chain token URI with metadata
         string memory json = string.concat(
-            '{"name":"Capsule #', letterId.toString(), '\",',
+            '{"name":"Capsule #', tokenId.toString(), '\",',
             '"description":"Time-locked letter capsule",',
             '"attributes":[',
                 '{"trait_type":"Created At","value":', block.timestamp.toString(), '},',
                 '{"trait_type":"Unlock Time","display_type":"date","value":', _unlockTime.toString(), '}',
             ']}'
         );
-        _setTokenURI(letterId, string.concat(_baseJsonPrefix, Base64.encode(bytes(json))));
+        _setTokenURI(tokenId, string.concat(_baseJsonPrefix, Base64.encode(bytes(json))));
         
         // Update user profile
         UserProfile storage profile = userProfiles[msg.sender];
