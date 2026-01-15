@@ -53,11 +53,11 @@ class LazyErrorBoundary extends Component<{ children: ReactNode }, LazyErrorBoun
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Lazy load error:', error, errorInfo);
   }
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <Box sx={{ p: 3, textAlign: 'center' }}>

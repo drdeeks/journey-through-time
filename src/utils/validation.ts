@@ -251,6 +251,7 @@ export const validateForm = (
 
   Object.keys(rules).forEach(fieldName => {
     const fieldRules = rules[fieldName];
+    if (!fieldRules) return;
     const fieldValue = data[fieldName];
     const result = validate(fieldValue, fieldRules, fieldName);
     allErrors.push(...result.errors);
@@ -287,9 +288,6 @@ export const sanitizeInput = (input: string): string => {
  * Sanitize HTML content
  */
 export const sanitizeHtml = (html: string): string => {
-  const allowedTags = ['p', 'br', 'strong', 'em', 'u', 'ol', 'ul', 'li'];
-  const allowedAttributes = ['class', 'id'];
-  
   // Simple HTML sanitization - in production, use a library like DOMPurify
   let sanitized = html;
   
@@ -504,7 +502,7 @@ export const useValidation = <T>(
       if (!fieldErrors[error.field]) {
         fieldErrors[error.field] = [];
       }
-      fieldErrors[error.field].push(error);
+      fieldErrors[error.field]?.push(error);
     });
     
     setErrors(fieldErrors);

@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 import {
   Box,
   Paper,
@@ -47,7 +47,7 @@ class ErrorBoundary extends Component<Props, State> {
     };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Use centralized error handler
     const appError = errorHandler.handleError(error, {
       componentStack: errorInfo.componentStack,
@@ -68,7 +68,7 @@ class ErrorBoundary extends Component<Props, State> {
     }
 
     // Log to console in development
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env['NODE_ENV'] === 'development') {
       console.error('ErrorBoundary caught an error:', error, errorInfo);
     }
   }
@@ -97,7 +97,7 @@ class ErrorBoundary extends Component<Props, State> {
     return 'An unexpected error occurred. Please try again.';
   }
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       // Custom fallback UI
       if (this.props.fallback) {
@@ -127,7 +127,7 @@ class ErrorBoundary extends Component<Props, State> {
                   </Alert>
                 )}
 
-                {process.env.NODE_ENV === 'development' && this.state.error && (
+                {process.env['NODE_ENV'] === 'development' && this.state.error && (
                   <Alert severity="error" sx={{ width: '100%', maxWidth: 600 }}>
                     <AlertTitle>Error Details (Development)</AlertTitle>
                     <Typography variant="body2" component="pre" sx={{ 

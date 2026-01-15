@@ -46,10 +46,12 @@ export const usePerformanceMonitoring = (pageName: string) => {
         try {
           const entries = list.getEntries();
           const lastEntry = entries[entries.length - 1];
-          metricsRef.current.lcp = lastEntry.startTime;
-          reportMetric('LCP', lastEntry.startTime, pageName);
-        } catch (error) {
-          console.error('LCP observer error:', error);
+          if (lastEntry) {
+            metricsRef.current.lcp = lastEntry.startTime;
+            reportMetric('LCP', lastEntry.startTime, pageName);
+          }
+        } catch (err) {
+          console.error('LCP observer error:', err);
         }
       });
       lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] });
@@ -114,7 +116,7 @@ export const usePerformanceMonitoring = (pageName: string) => {
 };
 
 const reportMetric = (name: string, value: number, pageName: string) => {
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env['NODE_ENV'] === 'development') {
     console.log(`[Performance] ${pageName} - ${name}: ${value.toFixed(2)}ms`);
   }
 
@@ -129,7 +131,7 @@ export const measureComponentRender = (componentName: string) => {
     const endTime = performance.now();
     const renderTime = endTime - startTime;
 
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env['NODE_ENV'] === 'development') {
       console.log(`[Render] ${componentName}: ${renderTime.toFixed(2)}ms`);
     }
 

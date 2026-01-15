@@ -29,7 +29,7 @@ import {
 } from '@mui/icons-material';
 import { useWeb3 } from '../contexts/Web3Context';
 import { formatDistanceToNow } from 'date-fns';
-import { Letter, FutureLettersContract, LoadingState, ErrorState } from '../types';
+import { LoadingState, ErrorState } from '../types';
 
 interface PublicLetter {
   author: string;
@@ -43,7 +43,7 @@ interface PublicLetter {
 const ITEMS_PER_PAGE = 12;
 
 const PublicLetters: React.FC = () => {
-  const { contract, account, isConnected } = useWeb3();
+  const { contract, isConnected } = useWeb3();
   const [publicLetters, setPublicLetters] = useState<PublicLetter[]>([]);
   const [loadingState, setLoadingState] = useState<LoadingState>({ isLoading: true });
   const [errorState, setErrorState] = useState<ErrorState>({ hasError: false });
@@ -90,37 +90,42 @@ const PublicLetters: React.FC = () => {
       setLoadingState({ isLoading: true, message: 'Fetching public letters...' });
       setErrorState({ hasError: false });
 
-      const typedContract = contract as unknown as FutureLettersContract;
+      // TODO: Implement getPublicLetterCount and getPublicLetters in contract
+      setTotalLetters(0);
+      setTotalPages(1);
+      setPublicLetters([]);
       
-      // Get total count first
-      const totalCount = await typedContract.getPublicLetterCount();
-      setTotalLetters(Number(totalCount));
-      setTotalPages(Math.ceil(Number(totalCount) / ITEMS_PER_PAGE));
+      // const typedContract = contract as unknown as FutureLettersContract;
+      
+      // // Get total count first
+      // const totalCount = await typedContract.getPublicLetterCount();
+      // setTotalLetters(Number(totalCount));
+      // setTotalPages(Math.ceil(Number(totalCount) / ITEMS_PER_PAGE));
 
-      // Calculate offset for current page
-      const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+      // // Calculate offset for current page
+      // const offset = (currentPage - 1) * ITEMS_PER_PAGE;
       
-      // Fetch public letters with pagination
-      const [
-        authors,
-        letterIds,
-        titles,
-        moods,
-        createdAts,
-        unlockedAts,
-      ] = await typedContract.getPublicLetters(offset, ITEMS_PER_PAGE);
+      // // Fetch public letters with pagination
+      // const [
+      //   authors,
+      //   letterIds,
+      //   titles,
+      //   moods,
+      //   createdAts,
+      //   unlockedAts,
+      // ] = await typedContract.getPublicLetters(offset, ITEMS_PER_PAGE);
 
       const letters: PublicLetter[] = [];
-      for (let i = 0; i < authors.length; i++) {
-        letters.push({
-          author: authors[i],
-          letterId: Number(letterIds[i]),
-          title: titles[i],
-          mood: moods[i],
-          createdAt: Number(createdAts[i]),
-          unlockedAt: Number(unlockedAts[i]),
-        });
-      }
+      // for (let i = 0; i < authors.length; i++) {
+      //   letters.push({
+      //     author: authors[i],
+      //     letterId: Number(letterIds[i]),
+      //     title: titles[i],
+      //     mood: moods[i],
+      //     createdAt: Number(createdAts[i]),
+      //     unlockedAt: Number(unlockedAts[i]),
+      //   });
+      // }
 
       setPublicLetters(letters);
       setLoadingState({ isLoading: false });

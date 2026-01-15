@@ -35,7 +35,7 @@ const deriveSymmetricKey = async (privateKey: string, salt: Uint8Array): Promise
     // Use PBKDF2 for key derivation
     const cryptoKey = await crypto.subtle.importKey(
       'raw',
-      keyMaterial,
+      keyMaterial as BufferSource,
       'PBKDF2',
       false,
       ['deriveBits']
@@ -44,7 +44,7 @@ const deriveSymmetricKey = async (privateKey: string, salt: Uint8Array): Promise
     const derivedBits = await crypto.subtle.deriveBits(
       {
         name: 'PBKDF2',
-        salt: salt,
+        salt: salt as BufferSource,
         iterations: PBKDF2_ITERATIONS,
         hash: 'SHA-256',
       },
@@ -88,7 +88,7 @@ export const encryptLetter = async (
     // Import the symmetric key
     const cryptoKey = await crypto.subtle.importKey(
       'raw',
-      symmetricKey,
+      symmetricKey as BufferSource,
       { name: 'AES-GCM' },
       false,
       ['encrypt']
@@ -98,11 +98,11 @@ export const encryptLetter = async (
     const encryptedContent = await crypto.subtle.encrypt(
       {
         name: 'AES-GCM',
-        iv: iv,
+        iv: iv as BufferSource,
         tagLength: 128, // Full authentication tag
       },
       cryptoKey,
-      contentBytes
+      contentBytes as BufferSource
     );
 
     // Create encrypted data structure
@@ -171,7 +171,7 @@ export const decryptLetter = async (
     // Import the symmetric key
     const cryptoKey = await crypto.subtle.importKey(
       'raw',
-      symmetricKey,
+      symmetricKey as BufferSource,
       { name: 'AES-GCM' },
       false,
       ['decrypt']

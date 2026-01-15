@@ -162,7 +162,7 @@ export const useRenderTimer = (componentName: string) => {
     const duration = endTime - startTimeRef.current;
     renderCountRef.current++;
 
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env['NODE_ENV'] === 'development') {
       console.log(`${componentName} render #${renderCountRef.current}: ${duration.toFixed(2)}ms`);
     }
 

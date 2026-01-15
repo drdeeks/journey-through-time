@@ -55,14 +55,14 @@ class ErrorHandler {
     const appError: AppError = {
       category: this.categorizeError(error),
       message: error.message,
-      stack: error.stack,
+      ...(error.stack ? { stack: error.stack } : {}),
       timestamp: Date.now(),
-      context,
+      ...(context ? { context } : {}),
     };
 
     this.logError(appError);
     
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env['NODE_ENV'] === 'production') {
       this.reportToService(appError);
     }
 
@@ -79,7 +79,7 @@ class ErrorHandler {
     console.error(`[${error.category}] ${error.message}`, error.context);
   }
 
-  private reportToService(error: AppError): void {
+  private reportToService(_error: AppError): void {
     // Placeholder for external error reporting service
     // TODO: Integrate with Sentry, LogRocket, or similar
   }

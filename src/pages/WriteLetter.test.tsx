@@ -4,7 +4,7 @@ import '@testing-library/jest-dom';
 import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { AdapterDateFns as AdapterDateFnsV3 } from '@mui/x-date-pickers/AdapterDateFnsV3';
 import WriteLetter from './WriteLetter';
 import { addDays } from 'date-fns';
 
@@ -46,7 +46,7 @@ const theme = createTheme();
 const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <BrowserRouter>
     <ThemeProvider theme={theme}>
-      <LocalizationProvider dateAdapter={AdapterDateFns}>{children}</LocalizationProvider>
+      <LocalizationProvider dateAdapter={AdapterDateFnsV3}>{children}</LocalizationProvider>
     </ThemeProvider>
   </BrowserRouter>
 );

@@ -286,8 +286,6 @@ export const createAccessibleFormFieldProps = (
  */
 export const useFocusTrap = (enabled: boolean = true) => {
   const containerRef = useRef<HTMLElement | null>(null);
-  const firstFocusableRef = useRef<HTMLElement | null>(null);
-  const lastFocusableRef = useRef<HTMLElement | null>(null);
 
   const getFocusableElements = useCallback(() => {
     if (!containerRef.current) return [];
@@ -315,12 +313,12 @@ export const useFocusTrap = (enabled: boolean = true) => {
     if (event.shiftKey) {
       if (document.activeElement === firstElement) {
         event.preventDefault();
-        lastElement.focus();
+        lastElement?.focus();
       }
     } else {
       if (document.activeElement === lastElement) {
         event.preventDefault();
-        firstElement.focus();
+        firstElement?.focus();
       }
     }
   }, [enabled, getFocusableElements]);
@@ -332,6 +330,7 @@ export const useFocusTrap = (enabled: boolean = true) => {
         document.removeEventListener('keydown', handleKeyDown);
       };
     }
+    return undefined;
   }, [enabled, handleKeyDown]);
 
   const setContainer = useCallback((element: HTMLElement | null) => {
@@ -411,9 +410,9 @@ export const checkColorContrast = (foreground: string, background: string): numb
   const hexToRgb = (hex: string) => {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result ? {
-      r: parseInt(result[1], 16),
-      g: parseInt(result[2], 16),
-      b: parseInt(result[3], 16)
+      r: parseInt(result[1] || '0', 16),
+      g: parseInt(result[2] || '0', 16),
+      b: parseInt(result[3] || '0', 16)
     } : null;
   };
 
@@ -423,7 +422,7 @@ export const checkColorContrast = (foreground: string, background: string): numb
       c = c / 255;
       return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
     });
-    return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+    return 0.2126 * (rs || 0) + 0.7152 * (gs || 0) + 0.0722 * (bs || 0);
   };
 
   const fg = hexToRgb(foreground);
@@ -444,7 +443,7 @@ export const checkColorContrast = (foreground: string, background: string): numb
  * Utility for creating accessible dialog props
  */
 export const createAccessibleDialogProps = (
-  title: string,
+  _title: string,
   description?: string,
   modal: boolean = true
 ) => ({

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ErrorBoundary from './ErrorBoundary';
 import { errorHandler } from '../utils/errorHandler';
@@ -63,24 +63,33 @@ describe('ErrorBoundary', () => {
 
   it('should reset error state on retry', async () => {
     const user = userEvent.setup();
+    let shouldThrow = true;
+    
+    const TestComponent = () => {
+      if (shouldThrow) {
+        throw new Error('Test error');
+      }
+      return <div>No error</div>;
+    };
+
     const { rerender } = render(
       <ErrorBoundary>
-        <ThrowError shouldThrow={true} />
+        <TestComponent />
       </ErrorBoundary>
     );
 
     expect(screen.getByText(/Something went wrong/i)).toBeInTheDocument();
 
+    // Change the error condition
+    shouldThrow = false;
+
     const retryButton = screen.getByRole('button', { name: /try again/i });
     await user.click(retryButton);
 
-    rerender(
-      <ErrorBoundary>
-        <ThrowError shouldThrow={false} />
-      </ErrorBoundary>
-    );
-
-    expect(screen.getByText('No error')).toBeInTheDocument();
+    // After retry, the error boundary should reset and render children again
+    await waitFor(() => {
+      expect(screen.getByText('No error')).toBeInTheDocument();
+    });
   });
 
   it('should render custom fallback when provided', () => {

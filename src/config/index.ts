@@ -26,10 +26,10 @@ interface AppConfig {
 }
 
 const getEnvironment = (): AppConfig['environment'] => {
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env['NODE_ENV'] === 'production') {
     return 'production';
   }
-  if (process.env.REACT_APP_ENV === 'staging') {
+  if (process.env['REACT_APP_ENV'] === 'staging') {
     return 'staging';
   }
   return 'development';
@@ -38,14 +38,14 @@ const getEnvironment = (): AppConfig['environment'] => {
 const config: AppConfig = {
   environment: getEnvironment(),
   api: {
-    contractAddress: process.env.REACT_APP_CONTRACT_ADDRESS || '',
-    networkId: process.env.REACT_APP_NETWORK_ID || '1',
-    rpcUrl: process.env.REACT_APP_RPC_URL || 'https://rpc.testnet.monad.xyz',
+    contractAddress: process.env['REACT_APP_CONTRACT_ADDRESS'] || '',
+    networkId: process.env['REACT_APP_NETWORK_ID'] || '1',
+    rpcUrl: process.env['REACT_APP_RPC_URL'] || 'https://rpc.testnet.monad.xyz',
   },
   features: {
-    enableErrorReporting: process.env.NODE_ENV === 'production',
-    enablePerformanceMonitoring: process.env.NODE_ENV === 'production',
-    enableAnalytics: process.env.NODE_ENV === 'production',
+    enableErrorReporting: process.env['NODE_ENV'] === 'production',
+    enablePerformanceMonitoring: process.env['NODE_ENV'] === 'production',
+    enableAnalytics: process.env['NODE_ENV'] === 'production',
     maxRetries: 3,
     retryDelay: 1000,
   },
