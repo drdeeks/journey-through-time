@@ -84,6 +84,7 @@ export const useKeyboardNavigation = (
 ) => {
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     onKeyDown?.(event);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onKeyDown, ...dependencies]);
 
   useEffect(() => {

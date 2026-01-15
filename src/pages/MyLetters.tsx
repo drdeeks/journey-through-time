@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Buffer } from 'buffer';
 import {
   Box,
   Paper,
@@ -235,6 +234,10 @@ const MyLetters: React.FC = () => {
 
       const content = await decryptLetter(selectedLetter.encryptedContent, privateKey);
       setDecryptedContent(content);
+      
+      // Clear private key from memory after successful decryption
+      setPrivateKey('');
+      clearSensitiveData(privateKey);
     } catch (err: any) {
       console.error('Decryption failed:', err);
       setErrorState({

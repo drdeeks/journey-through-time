@@ -27,6 +27,9 @@
     "test": "hardhat test",
     "test:frontend": "react-scripts test",
     "test:frontend:coverage": "react-scripts test --coverage --watchAll=false",
+    "test:all": "npm test && npm run test:frontend:coverage",
+    "test:unit": "react-scripts test --testPathPattern='\\.(test|spec)\\.(ts|tsx)$' --watchAll=false",
+    "test:integration": "react-scripts test --testPathPattern='integration' --watchAll=false",
     "eject": "react-scripts eject",
     "deploy": "hardhat run scripts/deploy.ts --network monad-testnet",
     "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
@@ -54,7 +57,8 @@
     "analyze": "npm run build && npx source-map-explorer 'build/static/js/*.js'",
     "gas-report": "REPORT_GAS=true hardhat test",
     "performance:analyze": "npm run build && npx lighthouse --output=json --output-path=./lighthouse-report.json http://localhost:3000",
-    "accessibility:test": "npx pa11y http://localhost:3000"
+    "accessibility:test": "npx pa11y http://localhost:3000",
+    "validate": "npm run type-check && npm run lint:ts && npm run test:all"
   },
   "eslintConfig": {
     "extends": [

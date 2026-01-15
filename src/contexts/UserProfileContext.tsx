@@ -50,13 +50,15 @@ export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ childre
 
     setProfile((prev) => {
       if (prev.username) return prev; // keep custom username
-
       const fallback = mainDomain || account;
-      const updated = { ...prev, username: fallback };
-      saveToStorage(updated);
-      return updated;
+      return { ...prev, username: fallback };
     });
   }, [account, mainDomain]);
+
+  // Persist profile changes
+  useEffect(() => {
+    saveToStorage(profile);
+  }, [profile]);
 
   const saveToStorage = (state: UserProfileState) => {
     try {
@@ -67,24 +69,15 @@ export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ childre
   };
 
   const updateUsername = (name: string) => {
-    setProfile((prev) => {
-      const updated = { ...prev, username: name };
-      saveToStorage(updated);
-      return updated;
-    });
+    setProfile((prev) => ({ ...prev, username: name }));
   };
 
   const updateProfilePic = (url: string | null) => {
-    setProfile((prev) => {
-      const updated = { ...prev, profilePicUrl: url };
-      saveToStorage(updated);
-      return updated;
-    });
+    setProfile((prev) => ({ ...prev, profilePicUrl: url }));
   };
 
   const resetProfile = () => {
     setProfile(DEFAULT_STATE);
-    saveToStorage(DEFAULT_STATE);
   };
 
   const contextValue: UserProfileContextType = {

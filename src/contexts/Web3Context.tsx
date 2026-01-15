@@ -127,34 +127,38 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Auto-connect if previously connected (but avoid infinite loops)
+  // Auto-connect if previously connected
   useEffect(() => {
     let mounted = true;
 
     const checkConnection = async () => {
-      if (!mounted || isConnecting) return;
+      if (!mounted || isConnecting || active) return;
 
       try {
-        if (window.ethereum && !active) {
+        if (window.ethereum) {
           const accounts = await (window.ethereum as any).request({ method: 'eth_accounts' });
-          if (accounts.length > 0 && mounted) {
-            await connect();
+          if (accounts.length > 0 && mounted && !active) {
+            setIsConnecting(true);
+            setError(null);
+            await activate(injected);
+            setIsConnecting(false);
           }
         }
       } catch (error) {
         console.error('Auto-connect error:', error);
-        // Don't set error state for auto-connect failures
+        if (mounted) {
+          setIsConnecting(false);
+        }
       }
     };
 
-    // Small delay to avoid race conditions
     const timeoutId = setTimeout(checkConnection, 1000);
 
     return () => {
       mounted = false;
       clearTimeout(timeoutId);
     };
-  }, []); // Empty dependency array to run only once
+  }, [active, isConnecting, activate]);
 
   const value: Web3ContextType = {
     account: account || null,

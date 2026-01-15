@@ -38,9 +38,20 @@ const Profile: React.FC = () => {
   const handleSave = () => {
     updateUsername(tempName.trim() || (account ?? ''));
     if (tempPic) {
+      // Check file size (max 5MB)
+      if (tempPic.size > 5 * 1024 * 1024) {
+        alert('Image too large. Please select an image under 5MB.');
+        return;
+      }
+      
       const reader = new FileReader();
       reader.onload = (e) => {
         updateProfilePic(e.target?.result as string);
+        setTempPic(null); // Clear after upload
+      };
+      reader.onerror = () => {
+        alert('Failed to read image file.');
+        setTempPic(null);
       };
       reader.readAsDataURL(tempPic);
     }

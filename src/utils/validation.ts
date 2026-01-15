@@ -261,12 +261,24 @@ export const validateForm = (
  * Sanitize input data
  */
 export const sanitizeInput = (input: string): string => {
+  if (!input || typeof input !== 'string') {
+    return '';
+  }
+
   return input
     .trim()
-    .replace(/[<>]/g, '') // Remove potential HTML tags
-    .replace(/javascript:/gi, '') // Remove javascript: protocol
-    .replace(/on\w+=/gi, '') // Remove event handlers
-    .replace(/\s+/g, ' '); // Normalize whitespace
+    // Remove script tags and content
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    // Remove all HTML tags
+    .replace(/<[^>]*>/g, '')
+    // Remove javascript: protocol
+    .replace(/javascript:/gi, '')
+    // Remove event handlers
+    .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
+    // Remove data: protocol
+    .replace(/data:text\/html/gi, '')
+    // Normalize whitespace
+    .replace(/\s+/g, ' ');
 };
 
 /**

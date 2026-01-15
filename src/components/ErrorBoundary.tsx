@@ -14,16 +14,19 @@ import {
   Refresh as RefreshIcon,
   Home as HomeIcon,
 } from '@mui/icons-material';
+import { errorHandler, ErrorCategory } from '../utils/errorHandler';
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
 
 interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: ErrorInfo | null;
+  errorCategory: ErrorCategory | null;
 }
 
 class ErrorBoundary extends Component<Props, State> {
@@ -33,36 +36,40 @@ class ErrorBoundary extends Component<Props, State> {
       hasError: false,
       error: null,
       errorInfo: null,
+      errorCategory: null,
     };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return {
       hasError: true,
       error,
-      errorInfo: null,
     };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
+    // Use centralized error handler
+    const appError = errorHandler.handleError(error, {
+      componentStack: errorInfo.componentStack,
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      url: window.location.href,
+    });
+
     this.setState({
       error,
       errorInfo,
+      errorCategory: appError.category,
     });
 
-    // Log error to external service in production
-    if (process.env.NODE_ENV === 'production') {
-      // TODO: Implement error logging service (e.g., Sentry, LogRocket)
-      console.error('Production error:', {
-        error: error.message,
-        stack: error.stack,
-        componentStack: errorInfo.componentStack,
-        timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-        url: window.location.href,
-      });
+    // Call custom error handler if provided
+    if (this.props.onError) {
+      this.props.onError(error, errorInfo);
+    }
+
+    // Log to console in development
+    if (process.env.NODE_ENV === 'development') {
+      console.error('ErrorBoundary caught an error:', error, errorInfo);
     }
   }
 
@@ -71,12 +78,24 @@ class ErrorBoundary extends Component<Props, State> {
       hasError: false,
       error: null,
       errorInfo: null,
+      errorCategory: null,
     });
   };
 
   handleGoHome = () => {
     window.location.href = '/';
   };
+
+  getUserFriendlyMessage(): string {
+    if (this.state.errorCategory) {
+      return errorHandler.getUserFriendlyMessage({
+        category: this.state.errorCategory,
+        message: this.state.error?.message || '',
+        timestamp: Date.now(),
+      });
+    }
+    return 'An unexpected error occurred. Please try again.';
+  }
 
   render() {
     if (this.state.hasError) {
@@ -98,9 +117,15 @@ class ErrorBoundary extends Component<Props, State> {
                 </Typography>
                 
                 <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 500 }}>
-                  We encountered an unexpected error. Don't worry, your data is safe. 
-                  You can try refreshing the page or go back to the home page.
+                  {this.getUserFriendlyMessage()}
                 </Typography>
+
+                {this.state.errorCategory && (
+                  <Alert severity="warning" sx={{ width: '100%', maxWidth: 600 }}>
+                    <AlertTitle>Error Type: {this.state.errorCategory}</AlertTitle>
+                    Your data is safe. You can try refreshing the page or go back to the home page.
+                  </Alert>
+                )}
 
                 {process.env.NODE_ENV === 'development' && this.state.error && (
                   <Alert severity="error" sx={{ width: '100%', maxWidth: 600 }}>

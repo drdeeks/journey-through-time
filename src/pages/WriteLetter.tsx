@@ -1,5 +1,4 @@
 import React, { useState, useCallback } from 'react';
-import { Buffer } from 'buffer';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -78,16 +77,18 @@ const WriteLetter: React.FC = () => {
       case 1:
         if (!formData.unlockTime) {
           newErrors.unlockTime = 'Unlock time is required';
-        } else if (
-          formData.unlockTime &&
-          !isAfter(new Date(Number(formData.unlockTime) * 1000), addDays(new Date(), 3))
-        ) {
-          newErrors.unlockTime = 'Unlock time must be at least 3 days in the future';
-        } else if (
-          formData.unlockTime &&
-          !isBefore(new Date(Number(formData.unlockTime) * 1000), addYears(new Date(), 50))
-        ) {
-          newErrors.unlockTime = 'Unlock time cannot exceed 50 years';
+        } else {
+          // Use UTC timestamps for consistent validation across timezones
+          const unlockDate = new Date(Number(formData.unlockTime) * 1000);
+          const nowUTC = new Date(Date.now());
+          const minDate = addDays(nowUTC, 3);
+          const maxDate = addYears(nowUTC, 50);
+          
+          if (!isAfter(unlockDate, minDate)) {
+            newErrors.unlockTime = 'Unlock time must be at least 3 days in the future';
+          } else if (!isBefore(unlockDate, maxDate)) {
+            newErrors.unlockTime = 'Unlock time cannot exceed 50 years';
+          }
         }
         break;
       case 2:

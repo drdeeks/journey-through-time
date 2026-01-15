@@ -9,6 +9,14 @@ export const useDebounce = <T extends (...args: any[]) => any>(
 ): T => {
   const timeoutRef = useRef<NodeJS.Timeout>();
 
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
   return useCallback(
     ((...args: Parameters<T>) => {
       if (timeoutRef.current) {
@@ -59,18 +67,39 @@ export const useMemoizedValue = <T>(
   dependencies: React.DependencyList,
   cacheKey?: string
 ): T => {
-  const cacheRef = useRef<Map<string, { value: T; deps: React.DependencyList }>>(new Map());
+  const cacheRef = useRef<Map<string, { value: T; deps: React.DependencyList; timestamp: number }>>(new Map());
+  const MAX_CACHE_SIZE = 50;
   
   return useMemo(() => {
     const key = cacheKey || JSON.stringify(dependencies);
     const cached = cacheRef.current.get(key);
     
     if (cached && JSON.stringify(cached.deps) === JSON.stringify(dependencies)) {
+      // Update timestamp for LRU
+      cached.timestamp = Date.now();
       return cached.value;
     }
     
     const value = factory();
-    cacheRef.current.set(key, { value, deps: [...dependencies] });
+    
+    // Implement LRU eviction if cache is full
+    if (cacheRef.current.size >= MAX_CACHE_SIZE) {
+      let oldestKey: string | null = null;
+      let oldestTime = Infinity;
+      
+      cacheRef.current.forEach((entry, k) => {
+        if (entry.timestamp < oldestTime) {
+          oldestTime = entry.timestamp;
+          oldestKey = k;
+        }
+      });
+      
+      if (oldestKey) {
+        cacheRef.current.delete(oldestKey);
+      }
+    }
+    
+    cacheRef.current.set(key, { value, deps: [...dependencies], timestamp: Date.now() });
     
     return value;
   }, dependencies);
@@ -84,13 +113,19 @@ export const useIntersectionObserver = (
   options: IntersectionObserverInit = {}
 ) => {
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const optionsRef = useRef(options);
+
+  // Update options ref when they change
+  useEffect(() => {
+    optionsRef.current = options;
+  }, [options]);
 
   useEffect(() => {
     observerRef.current = new IntersectionObserver(callback, {
       root: null,
       rootMargin: '0px',
       threshold: 0.1,
-      ...options,
+      ...optionsRef.current,
     });
 
     return () => {
@@ -98,7 +133,7 @@ export const useIntersectionObserver = (
         observerRef.current.disconnect();
       }
     };
-  }, [callback, options]);
+  }, [callback]);
 
   const observe = useCallback((element: Element | null) => {
     if (observerRef.current && element) {
@@ -144,7 +179,8 @@ export const useRenderTimer = (componentName: string) => {
  * Utility for creating stable object references
  */
 export const createStableObject = <T extends Record<string, any>>(obj: T): T => {
-  return useMemo(() => obj, Object.values(obj));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => obj, [JSON.stringify(obj)]);
 };
 
 /**
@@ -193,7 +229,14 @@ export class PerformanceMonitor {
     if (!this.metrics.has(label)) {
       this.metrics.set(label, []);
     }
-    this.metrics.get(label)!.push(value);
+    const metrics = this.metrics.get(label)!;
+    metrics.push(value);
+    
+    // Limit metrics array size to prevent memory leak
+    const MAX_METRICS = 1000;
+    if (metrics.length > MAX_METRICS) {
+      metrics.shift(); // Remove oldest entry
+    }
   }
 
   getMetrics(label?: string): Record<string, { avg: number; min: number; max: number; count: number }> {
@@ -288,6 +331,8 @@ export const useMemoryCleanup = (cleanupFn: () => void, dependencies: React.Depe
 
 /**
  * Utility for preventing memory leaks in async operations
+ * NOTE: AbortController is created but asyncFn must handle the signal.
+ * This hook provides the abort capability but doesn't automatically cancel operations.
  */
 export const useAsyncOperation = <T>(
   asyncFn: () => Promise<T>,
@@ -314,9 +359,16 @@ export const useAsyncOperation = <T>(
       if (error instanceof Error && error.name === 'AbortError') {
         return null;
       }
+      if (!mountedRef.current) {
+        return null;
+      }
       throw error;
     }
   }, [asyncFn]);
 
-  return { execute, abort: () => abortControllerRef.current?.abort() };
+  return { 
+    execute, 
+    abort: () => abortControllerRef.current?.abort(),
+    signal: abortControllerRef.current?.signal
+  };
 };

@@ -82,11 +82,8 @@ export const encryptLetter = async (
     // Convert content to bytes
     const contentBytes = toUtf8Bytes(content);
 
-    // Derive symmetric key from public key (simplified for demo)
-    // In production, use proper hybrid encryption (RSA + AES)
-    const keyMaterial = toUtf8Bytes(publicKey + Date.now().toString());
-    const keyHash = await crypto.subtle.digest('SHA-256', keyMaterial);
-    const symmetricKey = new Uint8Array(keyHash);
+    // Derive symmetric key from public key using PBKDF2
+    const symmetricKey = await deriveSymmetricKey(publicKey, salt);
 
     // Import the symmetric key
     const cryptoKey = await crypto.subtle.importKey(
@@ -233,20 +230,39 @@ export const validatePrivateKey = (privateKey: string): boolean => {
     }
 
     // Try to create a wallet to validate
-    new Wallet(privateKey);
-    return true;
-  } catch {
+    try {
+      new Wallet(privateKey);
+      return true;
+    } catch (walletError) {
+      // Expected error for invalid key
+      return false;
+    }
+  } catch (error) {
+    // Unexpected error - log it
+    console.error('Unexpected error in validatePrivateKey:', error);
     return false;
   }
 };
 
 /**
- * Securely clears sensitive data from memory (best effort)
+ * Attempts to clear sensitive data from memory (best effort)
+ * 
+ * NOTE: JavaScript strings are immutable, so this function cannot truly
+ * clear the original string from memory. This is a best-effort approach
+ * that may help in some scenarios but should not be relied upon for
+ * complete security. For production use, consider:
+ * - Using Web Crypto API's CryptoKey objects (non-extractable)
+ * - Implementing proper key management systems
+ * - Using hardware security modules (HSM) for key storage
+ * 
+ * @param data - The sensitive string to attempt to clear
  */
 export const clearSensitiveData = (data: string | null): void => {
   if (data && typeof data === 'string') {
     try {
-      // Overwrite the string with random characters (best-effort)
+      // This is a best-effort approach - JavaScript strings are immutable
+      // The original string will remain in memory until garbage collected
+      // This function is provided for API consistency but has limited effectiveness
       const length = data.length;
       for (let i = 0; i < length; i++) {
         // This is a best-effort approach

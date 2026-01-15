@@ -7,15 +7,19 @@ import { BrowserProvider } from 'ethers';
 // Components
 import Layout from './components/Layout';
 import ErrorBoundary from './components/ErrorBoundary';
-import Home from './pages/Home';
-import WriteLetter from './pages/WriteLetter';
-import MyLetters from './pages/MyLetters';
-import PublicLetters from './pages/PublicLetters';
-import Settings from './pages/Settings';
-import Profile from './pages/Profile';
+import { LazyLoadWrapper, LoadingFallback } from './components/LazyLoadWrapper';
+import { lazyWithRetry } from './utils/lazyLoad';
 import { Web3Provider } from './contexts/Web3Context';
 import { UserProfileProvider } from './contexts/UserProfileContext';
 import { EngagementProvider } from './contexts/EngagementContext';
+
+// Lazy load pages
+const Home = lazyWithRetry(() => import('./pages/Home'));
+const WriteLetter = lazyWithRetry(() => import('./pages/WriteLetter'));
+const MyLetters = lazyWithRetry(() => import('./pages/MyLetters'));
+const PublicLetters = lazyWithRetry(() => import('./pages/PublicLetters'));
+const Settings = lazyWithRetry(() => import('./pages/Settings'));
+const Profile = lazyWithRetry(() => import('./pages/Profile'));
 
 // Create theme
 const theme = createTheme({
@@ -133,14 +137,16 @@ function App() {
                 <CssBaseline />
                 <Router>
                   <Layout>
-                    <Routes>
-                      <Route path="/" element={<Home />} />
-                      <Route path="/write" element={<WriteLetter />} />
-                      <Route path="/my-letters" element={<MyLetters />} />
-                      <Route path="/public-letters" element={<PublicLetters />} />
-                      <Route path="/settings" element={<Settings />} />
-                      <Route path="/profile" element={<Profile />} />
-                    </Routes>
+                    <LazyLoadWrapper fallback={<LoadingFallback variant="skeleton" />}>
+                      <Routes>
+                        <Route path="/" element={<Home />} />
+                        <Route path="/write" element={<WriteLetter />} />
+                        <Route path="/my-letters" element={<MyLetters />} />
+                        <Route path="/public-letters" element={<PublicLetters />} />
+                        <Route path="/settings" element={<Settings />} />
+                        <Route path="/profile" element={<Profile />} />
+                      </Routes>
+                    </LazyLoadWrapper>
                   </Layout>
                 </Router>
               </ThemeProvider>

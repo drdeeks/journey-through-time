@@ -1,5 +1,9 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { v4 as uuidv4 } from 'uuid';
+
+// Simple UUID generator to avoid external dependency
+const generateId = (): string => {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+};
 
 interface LikeActivity {
   letterId: number;
@@ -63,12 +67,17 @@ export const EngagementProvider: React.FC<{ children: ReactNode }> = ({ children
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        setLikes(parsed.likes || []);
-        setComments(parsed.comments || []);
-        setLocks(parsed.locks || []);
+        // Validate structure before using
+        if (parsed && typeof parsed === 'object') {
+          setLikes(Array.isArray(parsed.likes) ? parsed.likes : []);
+          setComments(Array.isArray(parsed.comments) ? parsed.comments : []);
+          setLocks(Array.isArray(parsed.locks) ? parsed.locks : []);
+        }
       }
     } catch (err) {
       console.warn('Failed to parse engagements from storage', err);
+      // Clear corrupted data
+      localStorage.removeItem(STORAGE_KEY);
     }
   }, []);
 
@@ -77,6 +86,11 @@ export const EngagementProvider: React.FC<{ children: ReactNode }> = ({ children
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     } catch (err) {
       console.warn('Failed to persist engagements', err);
+      // Notify user if quota exceeded
+      if (err instanceof Error && err.name === 'QuotaExceededError') {
+        console.error('Storage quota exceeded. Please clear some data.');
+        // TODO: Show user notification
+      }
     }
   };
 
@@ -89,24 +103,19 @@ export const EngagementProvider: React.FC<{ children: ReactNode }> = ({ children
       } else {
         next = [...prev, { letterId, title, timestamp: Date.now() }];
       }
-      persist({ likes: next, comments, locks });
       return next;
     });
   };
 
   const addComment = (letterId: number, title: string, comment: string) => {
     const newComment: CommentActivity = {
-      id: uuidv4(),
+      id: generateId(),
       letterId,
       title,
       comment,
       timestamp: Date.now(),
     };
-    setComments((prev) => {
-      const next = [...prev, newComment];
-      persist({ likes, comments: next, locks });
-      return next;
-    });
+    setComments((prev) => [...prev, newComment]);
   };
 
   const addLock = (
@@ -124,12 +133,13 @@ export const EngagementProvider: React.FC<{ children: ReactNode }> = ({ children
       createdAt,
       timestamp: Date.now(),
     };
-    setLocks((prev) => {
-      const next = [...prev, newLock];
-      persist({ likes, comments, locks: next });
-      return next;
-    });
+    setLocks((prev) => [...prev, newLock]);
   };
+
+  // Persist whenever state changes
+  useEffect(() => {
+    persist({ likes, comments, locks });
+  }, [likes, comments, locks]);
 
   return (
     <EngagementContext.Provider value={{ likes, comments, locks, toggleLike, addComment, addLock }}>
