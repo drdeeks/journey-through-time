@@ -1,3 +1,5 @@
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+
 /**
  * Validation utility for form fields and data integrity
  */
