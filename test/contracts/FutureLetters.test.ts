@@ -3,7 +3,7 @@ import hre from "hardhat";
 import { ethers } from "hardhat";
 import "@nomicfoundation/hardhat-chai-matchers";
 import { deployContract, createValidLetter, getCurrentTimestamp, timeTravel, MIN_LOCK_TIME, MAX_LOCK_TIME, loadFixture } from "./helpers";
-import type { FutureLetters } from "../typechain-types/FutureLetters";
+import type { FutureLetters } from "../../typechain-types/FutureLetters";
 
 describe("FutureLetters Contract", function () {
   let futureLetters: FutureLetters;

@@ -77,27 +77,33 @@ npm run build
 ├── scripts/                # Deployment and utility scripts
 │   ├── deploy_foundry.sh   # Foundry deployment (recommended)
 │   ├── verify_foundry.sh   # Foundry verification (recommended)
+│   ├── createKeystore.ts   # Generate encrypted keystore from private key
 │   ├── deploy.ts           # Hardhat deployment script (legacy)
 │   └── verify.ts           # Hardhat verification (legacy)
-├── test/                   # Comprehensive test suite
-│   ├── FutureLetters.test.ts # Smart contract tests (15/15 passing)
-│   └── helpers.ts          # Test utilities
+├── test/                   # Smart contract tests
+│   └── contracts/          # Contract tests and utilities
+│       ├── FutureLetters.test.ts # Contract tests (15/15 passing)
+│       └── helpers.ts      # Test utilities
 ├── src/                    # Frontend source code
 │   ├── App.tsx             # Main application with routing
+│   ├── App.integration.test.tsx # Integration tests
 │   ├── components/         # Reusable UI components
 │   │   ├── Layout.tsx      # Enhanced layout with accessibility
-│   │   └── Layout.test.tsx # Component tests
+│   │   └── *.test.tsx      # Component tests
 │   ├── pages/              # Route-level page components
 │   │   ├── Home.tsx        # Landing page with onboarding
 │   │   ├── WriteLetter.tsx # Letter composition with validation
 │   │   ├── MyLetters.tsx   # Letter management dashboard
 │   │   ├── PublicLetters.tsx # Community letter discovery
 │   │   ├── Settings.tsx    # User preferences and account
-│   │   └── *.test.tsx      # Comprehensive page tests
+│   │   └── *.test.tsx      # Page component tests
 │   ├── contexts/           # React context providers
 │   │   └── Web3Context.tsx # Ethers.js v6 integration
 │   ├── utils/              # Utility functions
-│   │   └── encryption.ts   # AES-256-GCM encryption
+│   │   ├── encryption.ts   # AES-256-GCM encryption
+│   │   └── *.test.ts       # Utility tests
+│   ├── hooks/              # Custom React hooks
+│   │   └── *.test.ts       # Hook tests
 │   ├── types/              # TypeScript type definitions
 │   │   ├── index.ts        # Centralized type definitions
 │   │   └── global.d.ts     # Global and Jest types
@@ -121,10 +127,10 @@ npm run build
 - **scripts/**: Automation scripts for deploying, verifying, and managing keys.
   - `deploy.ts`: Deploys the smart contract to Monad testnet.
   - `verify.ts`: Verifies the contract on Monad explorer.
-  - `import-key.ts`: Imports an existing private key into a keystore.
-  - `generate-keystore.ts`: Generates a new keystore file from a private key.
-- **test/**: Contains automated tests for the smart contracts.
-- **src/**: All frontend source code, organized by components, pages, contexts, utils, and types.
+  - `createKeystore.ts`: Generates a new keystore file or imports an existing private key.
+- **test/**: Contains automated tests for smart contracts.
+  - **contracts/**: Smart contract tests with comprehensive coverage
+- **src/**: All frontend source code, organized by components, pages, contexts, utils, and types. Frontend tests are co-located with their respective source files.
 - **keystore.ts**: Script to generate an encrypted keystore file from your private key.
 - **hardhat.config.ts**: Main configuration for Hardhat, including Monad testnet settings.
 - **package.json**: Lists dependencies and npm scripts.
@@ -142,22 +148,25 @@ A keystore is an encrypted file that securely stores your private key, protected
 
 ### How to Generate a Keystore File
 
-1. **Set your private key as an environment variable:**
+1. **Run the keystore creation script:**
    ```sh
-   set PRIVATE_KEY=your_private_key_here  # Windows
-   export PRIVATE_KEY=your_private_key_here  # macOS/Linux
+   npx ts-node scripts/createKeystore.ts
    ```
-2. **Run the keystore script:**
-   ```sh
-   npx ts-node keystore.ts
-   ```
-   - You will be prompted to enter a password to encrypt your keystore.
-   - The script will generate a `keystore.json` file in the root directory.
+   
+2. **Choose your option:**
+   - **Option 1**: Generate a new wallet and keystore (creates fresh private key)
+   - **Option 2**: Import an existing private key into a keystore
+
+3. **Follow the prompts:**
+   - Enter your private key (if importing) - input is hidden for security
+   - Set a strong password to encrypt your keystore
+   - The script will generate a `keystore.json` file in the root directory
 
 ### How to Use the Keystore for Deployment
-- Use the `import-key.ts` or update your deployment scripts to load and decrypt the keystore file using your password.
-- Never commit your keystore file or password to version control.
-- Store your password securely (e.g., in a password manager).
+- Use the deployment scripts to load and decrypt the keystore file using your password
+- Never commit your keystore file or password to version control
+- Store your password securely (e.g., in a password manager)
+- Add `keystore.json` to your `.gitignore` file
 
 ---
 

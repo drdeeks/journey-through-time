@@ -1,7 +1,7 @@
 import hre from "hardhat";
 import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import type { FutureLetters } from "../typechain-types/FutureLetters";
+import type { FutureLetters } from "../../typechain-types/FutureLetters";
 import { toUtf8Bytes } from "ethers";
 
 // Loadfixture utility
