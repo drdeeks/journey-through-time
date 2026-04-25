@@ -29,6 +29,11 @@ const config: HardhatUserConfig = {
       accounts: [PRIVATE_KEY],
       chainId: 10143, // Monad testnet chain ID
     },
+    "monad": {
+      url: process.env['MONAD_MAINNET_RPC_URL'] || "https://rpc.monad.xyz",
+      accounts: [PRIVATE_KEY],
+      chainId: 143, // Monad mainnet chain ID
+    },
   },
   etherscan: {
     apiKey: ETHERSCAN_API_KEY,
@@ -39,6 +44,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://explorer.testnet.monad.xyz/api",
           browserURL: "https://explorer.testnet.monad.xyz",
+        },
+      },
+      {
+        network: "monad",
+        chainId: 143,
+        urls: {
+          apiURL: "https://explorer.monad.xyz/api",
+          browserURL: "https://explorer.monad.xyz",
         },
       },
     ],

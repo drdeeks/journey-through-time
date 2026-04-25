@@ -29,11 +29,13 @@ import {
   Timeline as TimelineIcon,
 } from '@mui/icons-material';
 import { useWeb3 } from '../contexts/Web3Context';
+import FarcasterShareButton from '../components/FarcasterShareButton';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const { isConnected } = useWeb3();
+  const frameUrl = process.env['REACT_APP_FRAME_URL'] || '';
 
   const features = [
     {
@@ -122,6 +124,7 @@ const Home: React.FC = () => {
               >
                 View My Letters
               </Button>
+              <FarcasterShareButton frameUrl={frameUrl} />
             </>
           ) : (
             <Box sx={{ textAlign: 'center' }}>

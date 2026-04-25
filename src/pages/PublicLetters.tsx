@@ -27,6 +27,7 @@ import {
   Schedule as ScheduleIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
+import FarcasterShareButton from '../components/FarcasterShareButton';
 import { useWeb3 } from '../contexts/Web3Context';
 import { formatDistanceToNow } from 'date-fns';
 import { LoadingState, ErrorState } from '../types';
@@ -44,6 +45,7 @@ const ITEMS_PER_PAGE = 12;
 
 const PublicLetters: React.FC = () => {
   const { contract, isConnected } = useWeb3();
+  const frameUrl = process.env['REACT_APP_FRAME_URL'] || '';
   const [publicLetters, setPublicLetters] = useState<PublicLetter[]>([]);
   const [loadingState, setLoadingState] = useState<LoadingState>({ isLoading: true });
   const [errorState, setErrorState] = useState<ErrorState>({ hasError: false });
@@ -325,11 +327,16 @@ const PublicLetters: React.FC = () => {
         <Typography variant="h4" component="h1" gutterBottom>
           Public Letters
         </Typography>
-        <Tooltip title="Refresh public letters">
-          <IconButton onClick={handleRefresh} disabled={loadingState.isLoading}>
-            <RefreshIcon />
-          </IconButton>
-        </Tooltip>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <FarcasterShareButton frameUrl={frameUrl} label="Share Frame" />
+          <Tooltip title="Refresh public letters">
+            <Box component="span">
+              <IconButton onClick={handleRefresh} disabled={loadingState.isLoading}>
+                <RefreshIcon />
+              </IconButton>
+            </Box>
+          </Tooltip>
+        </Box>
       </Box>
 
       {/* Search and Filter Section */}

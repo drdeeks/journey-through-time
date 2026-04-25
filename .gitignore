@@ -82,3 +82,6 @@ bundle-report.html
 .npm
 .eslintcache
 .stylelintcache
+
+# Vercel (frames service)
+.vercel/

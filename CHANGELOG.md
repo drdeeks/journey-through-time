@@ -1,5 +1,32 @@
 # Journey Through Time - Enterprise Optimization Changelog
 
+## 2026-02-10
+
+### Farcaster Frames Split (Serverless)
+- Added a serverless Frames service under `apps/frame` with frame metadata, image, health endpoint, and Vercel routing.
+- Documented frame service usage and deployment.
+
+### Multi-Chain Support (Base, Arbitrum, Monad)
+- Added chain configuration utilities for labels, supported chain IDs, and per-chain contract addresses.
+- Updated Web3 context to derive the contract address per chain and surface it in settings.
+
+### Lazy Loading & Prefetch
+- Added intent-based prefetching for route navigation and lazy-loaded heavy subcomponents (profile letters tab, engagement panel, date pickers).
+- Added lazy wrappers and utility helpers for preloading bundles.
+
+### Farcaster Sharing UX
+- Added a Farcaster share button (Warpcast compose link) to the home, public letters, and read-letter views.
+
+### Documentation & Env Updates
+- Added frame URL and chain address configuration to `env.example`.
+- Updated README project structure to include the new frames service.
+- Added Vercel ignore entry for frame service deployments.
+
+### Test/Misc Updates
+- Updated Web3 context mocks/tests for new `contractAddress` field.
+
+---
+
 ## Version 1.1.5 - 2026-01-15
 
 ### TypeScript Strict Mode Compliance ✅

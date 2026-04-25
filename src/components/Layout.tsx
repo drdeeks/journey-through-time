@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   AppBar,
@@ -35,6 +35,8 @@ import {
   AccountCircle as AccountCircleIcon,
 } from '@mui/icons-material';
 import { useWeb3 } from '../contexts/Web3Context';
+import { getChainLabel } from '../config/chains';
+import { preloadComponents } from '../utils/lazyLoad';
 import type { LayoutProps } from '../types';
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
@@ -47,14 +49,42 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [showError, setShowError] = useState(false);
 
-  const menuItems = [
-    { text: 'Home', path: '/', icon: <HomeIcon /> },
-    { text: 'Write Letter', path: '/write', icon: <EditIcon /> },
-    { text: 'My Letters', path: '/my-letters', icon: <MailIcon /> },
-    { text: 'Public Letters', path: '/public-letters', icon: <PublicIcon /> },
-    { text: 'Profile', path: '/profile', icon: <AccountCircleIcon /> },
-    { text: 'Settings', path: '/settings', icon: <SettingsIcon /> },
-  ];
+  const menuItems = useMemo(
+    () => [
+      { text: 'Home', path: '/', icon: <HomeIcon />, preload: () => import('../pages/Home') },
+      {
+        text: 'Write Letter',
+        path: '/write',
+        icon: <EditIcon />,
+        preload: () => import('../pages/WriteLetter'),
+      },
+      {
+        text: 'My Letters',
+        path: '/my-letters',
+        icon: <MailIcon />,
+        preload: () => import('../pages/MyLetters'),
+      },
+      {
+        text: 'Public Letters',
+        path: '/public-letters',
+        icon: <PublicIcon />,
+        preload: () => import('../pages/PublicLetters'),
+      },
+      {
+        text: 'Profile',
+        path: '/profile',
+        icon: <AccountCircleIcon />,
+        preload: () => import('../pages/Profile'),
+      },
+      {
+        text: 'Settings',
+        path: '/settings',
+        icon: <SettingsIcon />,
+        preload: () => import('../pages/Settings'),
+      },
+    ],
+    []
+  );
 
   const toggleDrawer = useCallback(() => {
     setDrawerOpen((prev) => !prev);
@@ -70,6 +100,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     [navigate, isMobile]
   );
 
+  const handlePreload = useCallback((preload: () => Promise<any>) => {
+    preloadComponents([preload]);
+  }, []);
+
   const handleWalletAction = useCallback(async () => {
     try {
       if (isConnected) {
@@ -83,18 +117,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
   }, [isConnected, connect, disconnect]);
 
-  const getNetworkName = (chainId: number | null) => {
-    switch (chainId) {
-      case 1337:
-        return 'Local';
-      case 10143:
-        return 'Monad Testnet';
-      case 1:
-        return 'Ethereum';
-      default:
-        return 'Unknown';
-    }
-  };
+  const getNetworkName = (chainId: number | null) => getChainLabel(chainId);
 
   const getWalletButtonText = () => {
     if (isConnecting) return 'Connecting...';
@@ -115,6 +138,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <ListItem key={item.text} disablePadding>
             <ListItemButton
               onClick={() => handleNavigation(item.path)}
+              onMouseEnter={() => handlePreload(item.preload)}
+              onFocus={() => handlePreload(item.preload)}
               selected={location.pathname === item.path}
               sx={{
                 '&.Mui-selected': {
@@ -184,6 +209,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   key={item.text}
                   color="inherit"
                   onClick={() => handleNavigation(item.path)}
+                  onMouseEnter={() => handlePreload(item.preload)}
+                  onFocus={() => handlePreload(item.preload)}
                   startIcon={item.icon}
                   sx={{
                     borderBottom: location.pathname === item.path ? 2 : 0,
@@ -212,39 +239,40 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   : 'Click to connect wallet'
             }
           >
-            <Button
-              color={getWalletButtonColor()}
-              variant={isConnected ? 'contained' : 'outlined'}
-              startIcon={
-                isConnecting ? (
-                  <CircularProgress size={16} color="inherit" />
-                ) : error ? (
-                  <WarningIcon />
-                ) : (
-                  <WalletIcon />
-                )
-              }
-              onClick={handleWalletAction}
-              disabled={isConnecting}
-              sx={{
-                ml: 1,
-                minWidth: { xs: 'auto', sm: 140 },
-                '&.Mui-disabled': {
-                  opacity: 0.6,
-                },
-              }}
-              aria-label={isConnected ? 'Disconnect wallet' : 'Connect wallet'}
-            >
-              <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-                {mainDomain ??
-                  (account
-                    ? account.slice(0, 6) + '...' + account.slice(-4)
-                    : getWalletButtonText())}
-              </Box>
-              <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
-                {isConnecting ? '' : isConnected ? '✓' : 'Connect'}
-              </Box>
-            </Button>
+            <Box component="span" sx={{ ml: 1 }}>
+              <Button
+                color={getWalletButtonColor()}
+                variant={isConnected ? 'contained' : 'outlined'}
+                startIcon={
+                  isConnecting ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : error ? (
+                    <WarningIcon />
+                  ) : (
+                    <WalletIcon />
+                  )
+                }
+                onClick={handleWalletAction}
+                disabled={isConnecting}
+                sx={{
+                  minWidth: { xs: 'auto', sm: 140 },
+                  '&.Mui-disabled': {
+                    opacity: 0.6,
+                  },
+                }}
+                aria-label={isConnected ? 'Disconnect wallet' : 'Connect wallet'}
+              >
+                <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+                  {mainDomain ??
+                    (account
+                      ? account.slice(0, 6) + '...' + account.slice(-4)
+                      : getWalletButtonText())}
+                </Box>
+                <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+                  {isConnecting ? '' : isConnected ? '✓' : 'Connect'}
+                </Box>
+              </Button>
+            </Box>
           </Tooltip>
         </Toolbar>
       </AppBar>

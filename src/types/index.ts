@@ -32,6 +32,7 @@ export interface Web3ContextType {
   error: string | null;
   mainDomain: string | null;
   isConnected: boolean;
+  contractAddress?: string;
 }
 
 // Letter form data interface

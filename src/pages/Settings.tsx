@@ -38,10 +38,11 @@ import {
   CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 import { useWeb3 } from '../contexts/Web3Context';
+import { getChainLabel } from '../config/chains';
 import type { FutureLettersContract, UserProfile } from '../types';
 
 const Settings: React.FC = () => {
-  const { contract, account, isConnected, chainId, disconnect } = useWeb3();
+  const { contract, account, isConnected, chainId, disconnect, contractAddress } = useWeb3();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [reminderSettings, setReminderSettings] = useState({
     enabled: false,
@@ -168,18 +169,7 @@ const Settings: React.FC = () => {
     });
   };
 
-  const getNetworkName = (chainId: number | null) => {
-    switch (chainId) {
-      case 1337:
-        return 'Local Network';
-      case 10143:
-        return 'Monad Testnet';
-      case 1:
-        return 'Ethereum Mainnet';
-      default:
-        return 'Unknown Network';
-    }
-  };
+  const getNetworkName = (chainId: number | null) => getChainLabel(chainId);
 
   if (!isConnected) {
     return (
@@ -257,6 +247,21 @@ const Settings: React.FC = () => {
                     }
                   />
                 </ListItem>
+
+                {contractAddress && (
+                  <ListItem sx={{ px: 0 }}>
+                    <ListItemIcon>
+                      <InfoIcon />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary="Contract Address"
+                      secondary={contractAddress}
+                      secondaryTypographyProps={{
+                        sx: { fontFamily: 'monospace', wordBreak: 'break-all' },
+                      }}
+                    />
+                  </ListItem>
+                )}
 
                 {userProfile && (
                   <>

@@ -1,0 +1,20 @@
+{
+  "name": "journey-through-time-frames",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "vercel dev",
+    "lint": "eslint . --ext .js,.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@farcaster/frame-sdk": "^0.0.12"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0"
+  }
+}

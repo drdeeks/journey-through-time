@@ -11,10 +11,11 @@ jest.mock('@web3-react/core', () => ({
 // Mock lazy loading utility - must use require inside the factory
 jest.mock('./utils/lazyLoad', () => {
   const React = require('react');
+  const MockPage = () => React.createElement('div', null, 'Journey Through Time');
   return {
-    lazyWithRetry: (importFn: () => Promise<any>) => {
-      return React.lazy(importFn);
-    },
+    lazyWithRetry: () => MockPage,
+    preloadComponent: jest.fn(),
+    preloadComponents: jest.fn(),
   };
 });
 

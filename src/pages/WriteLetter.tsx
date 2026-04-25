@@ -1,4 +1,6 @@
 import React, { useState, useCallback } from 'react';
+import { LazyLoadWrapper, LoadingFallback } from '../components/LazyLoadWrapper';
+import { lazyWithRetry } from '../utils/lazyLoad';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -24,8 +26,16 @@ import {
   MenuItem,
   Grid,
 } from '@mui/material';
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+const DateTimePicker = lazyWithRetry(() =>
+  import('@mui/x-date-pickers/DateTimePicker').then((module) => ({
+    default: module.DateTimePicker,
+  }))
+);
+const LocalizationProvider = lazyWithRetry(() =>
+  import('@mui/x-date-pickers/LocalizationProvider').then((module) => ({
+    default: module.LocalizationProvider,
+  }))
+);
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3';
 import { addDays, addYears, isAfter, isBefore } from 'date-fns';
 import { toUtf8Bytes } from 'ethers';
@@ -265,30 +275,32 @@ const WriteLetter: React.FC = () => {
       case 1:
         return (
           <Box sx={{ mt: 2 }}>
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <DateTimePicker
-                label="Unlock Time"
-                value={formData.unlockTime ? new Date(Number(formData.unlockTime) * 1000) : null}
-                onChange={(newValue) => {
-                  const bigintValue = newValue
-                    ? BigInt(Math.floor(newValue.getTime() / 1000))
-                    : undefined;
-                  setFormData((prev) => ({ ...prev, unlockTime: bigintValue }));
-                  if (errors.unlockTime) {
-                    setErrors((prev) => ({ ...prev, unlockTime: '' }));
-                  }
-                }}
-                minDateTime={addDays(new Date(), 3)}
-                maxDateTime={addYears(new Date(), 50)}
-                sx={{ width: '100%' }}
-                slotProps={{
-                  textField: {
-                    error: Boolean(errors.unlockTime),
-                    helperText: errors.unlockTime,
-                  },
-                }}
-              />
-            </LocalizationProvider>
+            <LazyLoadWrapper fallback={<LoadingFallback variant="skeleton" height={220} />}>
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <DateTimePicker
+                  label="Unlock Time"
+                  value={formData.unlockTime ? new Date(Number(formData.unlockTime) * 1000) : null}
+                  onChange={(newValue) => {
+                    const bigintValue = newValue
+                      ? BigInt(Math.floor(newValue.getTime() / 1000))
+                      : undefined;
+                    setFormData((prev) => ({ ...prev, unlockTime: bigintValue }));
+                    if (errors.unlockTime) {
+                      setErrors((prev) => ({ ...prev, unlockTime: '' }));
+                    }
+                  }}
+                  minDateTime={addDays(new Date(), 3)}
+                  maxDateTime={addYears(new Date(), 50)}
+                  sx={{ width: '100%' }}
+                  slotProps={{
+                    textField: {
+                      error: Boolean(errors.unlockTime),
+                      helperText: errors.unlockTime,
+                    },
+                  }}
+                />
+              </LocalizationProvider>
+            </LazyLoadWrapper>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
               The letter will be locked until this time. You cannot access it before then.
             </Typography>

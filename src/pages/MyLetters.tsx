@@ -34,14 +34,16 @@ import {
   Refresh as RefreshIcon,
   Error as ErrorIcon,
 } from '@mui/icons-material';
+import FarcasterShareButton from '../components/FarcasterShareButton';
 import { useWeb3 } from '../contexts/Web3Context';
 import { decryptLetter, validatePrivateKey, clearSensitiveData } from '../utils/encryption';
-import EngagementSection from '../components/EngagementSection';
+import LazyEngagementSection from '../components/LazyEngagementSection';
 import { formatDistanceToNow } from 'date-fns';
 import { Letter, FutureLettersContract, TabChangeEvent, LoadingState, ErrorState } from '../types';
 
 const MyLetters: React.FC = () => {
   const { contract, account, isConnected } = useWeb3();
+  const frameUrl = process.env['REACT_APP_FRAME_URL'] || '';
   const [letters, setLetters] = useState<Letter[]>([]);
   const [loadingState, setLoadingState] = useState<LoadingState>({ isLoading: true });
   const [errorState, setErrorState] = useState<ErrorState>({ hasError: false });
@@ -381,9 +383,11 @@ const MyLetters: React.FC = () => {
             My Letters ({letters.length})
           </Typography>
           <Tooltip title="Refresh letters">
-            <IconButton onClick={fetchLetters} disabled={loadingState.isLoading} color="primary">
-              <RefreshIcon />
-            </IconButton>
+            <Box component="span">
+              <IconButton onClick={fetchLetters} disabled={loadingState.isLoading} color="primary">
+                <RefreshIcon />
+              </IconButton>
+            </Box>
           </Tooltip>
         </Box>
 
@@ -598,18 +602,27 @@ const MyLetters: React.FC = () => {
               />
               <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
                 <Tooltip title="Copy to clipboard">
-                  <IconButton onClick={handleCopyContent} size="small">
-                    <CopyIcon />
-                  </IconButton>
+                  <Box component="span">
+                    <IconButton onClick={handleCopyContent} size="small">
+                      <CopyIcon />
+                    </IconButton>
+                  </Box>
                 </Tooltip>
                 <Tooltip title="Download as JSON">
-                  <IconButton onClick={handleDownloadLetter} size="small">
-                    <DownloadIcon />
-                  </IconButton>
+                  <Box component="span">
+                    <IconButton onClick={handleDownloadLetter} size="small">
+                      <DownloadIcon />
+                    </IconButton>
+                  </Box>
                 </Tooltip>
               </Box>
               {selectedLetter && (
-                <EngagementSection letterId={selectedLetter.id} title={selectedLetter.title} />
+                <>
+                  <LazyEngagementSection letterId={selectedLetter.id} title={selectedLetter.title} />
+                  <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                    <FarcasterShareButton frameUrl={frameUrl} label="Share Frame" />
+                  </Box>
+                </>
               )}
             </>
           )}

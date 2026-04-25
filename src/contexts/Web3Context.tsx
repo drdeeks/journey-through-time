@@ -5,14 +5,14 @@ import { Contract, BrowserProvider } from 'ethers';
 import FutureLetters from '../artifacts/contracts/FutureLetters.sol/FutureLetters.json';
 import type { Web3ContextType } from '../types';
 import { TldParser, NetworkWithRpc } from '@onsol/tldparser';
+import { getContractAddressForChain, supportedChainIds } from '../config/chains';
 
 // Initialize injected connector
 export const injected = new InjectedConnector({
-  supportedChainIds: [1337, 10143], // Local hardhat and Monad testnet
+  supportedChainIds,
 });
 
-// Contract ABI and address
-const contractAddress = process.env['REACT_APP_CONTRACT_ADDRESS'] || '';
+// Contract ABI
 const contractABI = FutureLetters.abi;
 
 const Web3Context = createContext<Web3ContextType>({
@@ -46,7 +46,13 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const initContract = async () => {
-      if (library && account && contractAddress) {
+      if (library && account) {
+        const contractAddress = getContractAddressForChain(chainId);
+        if (!contractAddress) {
+          setContract(null);
+          return;
+        }
+
         try {
           // Get signer for ethers v6
           const provider = library as BrowserProvider;
@@ -64,7 +70,7 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     initContract();
-  }, [library, account]);
+  }, [library, account, chainId]);
 
   // Fetch main domain when account changes
   useEffect(() => {
@@ -73,6 +79,12 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
         setMainDomain(null);
         return;
       }
+
+      if (chainId !== 10143) {
+        setMainDomain(null);
+        return;
+      }
+
       try {
         const settings = new NetworkWithRpc(
           'monad',
@@ -88,7 +100,7 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
     fetchDomain();
-  }, [account]);
+  }, [account, chainId]);
 
   useEffect(() => {
     if (web3Error) {
@@ -164,6 +176,7 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
     account: account || null,
     chainId: chainId || null,
     contract,
+    contractAddress: getContractAddressForChain(chainId),
     connect,
     disconnect,
     isConnecting,

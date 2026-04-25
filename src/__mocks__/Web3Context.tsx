@@ -34,6 +34,7 @@ export const useWeb3 = jest.fn(() => ({
   account: null,
   chainId: null,
   contract: mockWeb3Contract,
+  contractAddress: null,
   connect: jest.fn(),
   disconnect: jest.fn(),
   isConnecting: false,

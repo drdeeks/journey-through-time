@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "api/frame.js": {
+      "runtime": "nodejs18.x",
+      "maxDuration": 10,
+      "memory": 256
+    }
+  },
+  "routes": [
+    { "src": "/frame", "dest": "/api/frame.js" },
+    { "src": "/", "dest": "/api/frame.js" }
+  ]
+}

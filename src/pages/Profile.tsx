@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { LazyLoadWrapper, LoadingFallback } from '../components/LazyLoadWrapper';
+import { lazyWithRetry } from '../utils/lazyLoad';
 import {
   Avatar,
   Box,
@@ -15,7 +17,7 @@ import {
   Typography,
 } from '@mui/material';
 import { Edit as EditIcon, Upload as UploadIcon } from '@mui/icons-material';
-import MyLetters from './MyLetters';
+const MyLetters = lazyWithRetry(() => import('./MyLetters'));
 import { useUserProfile } from '../contexts/UserProfileContext';
 import { useEngagement } from '../contexts/EngagementContext';
 import {
@@ -92,7 +94,11 @@ const Profile: React.FC = () => {
         <Tab label="Activity" />
       </Tabs>
 
-      {tab === 0 && <MyLetters />} {/* Reuse existing component */}
+      {tab === 0 && (
+        <LazyLoadWrapper fallback={<LoadingFallback variant="skeleton" height={260} />}>
+          <MyLetters />
+        </LazyLoadWrapper>
+      )} {/* Reuse existing component */}
       {tab === 1 && (
         <Box>
           {likes.length === 0 && comments.length === 0 && locks.length === 0 && (

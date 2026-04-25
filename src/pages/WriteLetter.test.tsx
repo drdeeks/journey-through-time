@@ -8,6 +8,21 @@ import { AdapterDateFns as AdapterDateFnsV3 } from '@mui/x-date-pickers/AdapterD
 import WriteLetter from './WriteLetter';
 import { addDays } from 'date-fns';
 
+jest.mock('../components/LazyLoadWrapper', () => ({
+  LazyLoadWrapper: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  LoadingFallback: () => <div>Loading...</div>,
+}));
+
+jest.mock('../utils/lazyLoad', () => {
+  const React = require('react');
+  return {
+    lazyWithRetry: () => ({ children }: { children?: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children ?? null),
+    preloadComponent: jest.fn(),
+    preloadComponents: jest.fn(),
+  };
+});
+
 // Mock the Web3Context using the centralized mock
 jest.mock('../contexts/Web3Context', () => ({
   __esModule: true,
@@ -15,6 +30,7 @@ jest.mock('../contexts/Web3Context', () => ({
     account: '0x1234567890123456789012345678901234567890',
     chainId: 1337,
     contract: null,
+    contractAddress: '0xabc',
     connect: jest.fn(),
     disconnect: jest.fn(),
     isConnecting: false,
@@ -61,6 +77,7 @@ describe('WriteLetter Component', () => {
       account: '0x123...',
       isConnected: true,
       chainId: 1337,
+      contractAddress: '0xabc',
       connect: jest.fn(),
       disconnect: jest.fn(),
       isConnecting: false,

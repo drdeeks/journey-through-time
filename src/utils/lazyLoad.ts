@@ -12,14 +12,19 @@ export const lazyWithRetry = <T extends ComponentType<any>>(
   const { maxRetries = 3, delay = 1000 } = options;
 
   return lazy(() => {
+    const cachedImport = importFunc().catch((error) => {
+      console.error('Failed to load component:', error);
+      throw error;
+    });
+
     return new Promise<{ default: T }>((resolve, reject) => {
       let retries = 0;
 
       const attemptImport = () => {
-        importFunc()
+        cachedImport
           .then(resolve)
           .catch((error) => {
-            retries++;
+            retries += 1;
             if (retries < maxRetries) {
               setTimeout(attemptImport, delay * retries);
             } else {
@@ -36,4 +41,8 @@ export const lazyWithRetry = <T extends ComponentType<any>>(
 
 export const preloadComponent = (importFunc: () => Promise<any>): void => {
   importFunc();
+};
+
+export const preloadComponents = (importFuncs: Array<() => Promise<any>>): void => {
+  importFuncs.forEach((importFunc) => importFunc());
 };
