@@ -1,5 +1,8 @@
 # Journey Through Time - Future Letters dApp
 
+[![DrDeeks Project](https://img.shields.io/badge/DrDeeks%20Project-171718?style=flat-square&labelColor=b84d32)](https://github.com/drdeeks)
+
+
 A production-ready decentralized application that allows users to write encrypted letters to their future selves, with time-locked visibility and optional public sharing. Built with React 18, TypeScript, Material-UI v5, and Ethereum smart contracts using ethers.js v6.
 
 🔐 **Enhanced Security** | ⚡ **Performance Optimized** | ♿ **Accessibility Compliant** | 📱 **Mobile First** | 👤 **User Profiles & Activity**
